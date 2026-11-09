@@ -14,7 +14,21 @@
 | **Phase 1** | Foundations, Secure Ingestion & Document Processing Engine | **COMPLETED** |
 | **Phase 2** | Research Intelligence & Hybrid Retrieval | **COMPLETED** |
 | **Phase 3** | Grounded AI Research Assistant & Conversational Memory | **COMPLETED** |
-| **Phase 4** | Evidence Verification Engine & Claim Entailment Analysis | **PLANNED** (Next Phase) |
+| **Phase 4** | Evidence Verification Engine & Claim Entailment Analysis | **COMPLETED** |
+| **Phase 5** | Scientific Intelligence & Comparative Literature Analysis | **PLANNED** (Next Phase) |
+
+---
+
+## Phase 4 Detailed Milestones & Tasks
+
+| Task ID | Milestone / Deliverable | Status | Verification Detail |
+| :--- | :--- | :--- | :--- |
+| **P4-M1** | Prerequisite Verification & Audit | **COMPLETED** | Inspected Phase 3 deliverables (`apps/api/app/api/v1/chat.py`, `app/services/llm.py`), verified 31/31 baseline tests pass. |
+| **P4-M2** | Atomic Claim Extraction Pipeline | **COMPLETED** | Implemented `ClaimExtractor` in `app/services/verification.py`. Decomposes complex paragraphs and coordinated clauses with contrastive conjunctions into standalone factual claims; bypasses strict abstentions cleanly. |
+| **P4-M3** | Entailment Verification Logic | **COMPLETED** | Implemented `EvidenceVerifier` in `app/services/verification.py`. Natural Language Inference (NLI) classification (`SUPPORTED`, `CONTRADICTED`, `MISSING`), maps supported claims to source text excerpt and page citations. Dual Gemini + deterministic offline execution. |
+| **P4-M4** | API & Frontend Payload Integration | **COMPLETED** | Added `verification_report` column to `ChatMessage` with Alembic migration `e969daf54158`. Integrated into `POST /chat/sessions/{id}/messages`. Added interactive Evidence Entailment Audit Card in `ChatInterface.tsx` with claim pills and source excerpt drawers. |
+| **P4-M5** | Testing and Security Verification | **COMPLETED** | Created `test_evidence_verification.py`. 35 automated tests passing (4 new Phase 4 tests). Verified extraction, contradiction detection, missing claim flagging, and chat API payload delivery. |
+| **P4-M6** | Git Management & Documentation | **COMPLETED** | Created `docs/VERITAS_PHASE_4_IMPLEMENTATION_REPORT.md` and updated `docs/PHASE_TRACKER.md`. Commits cleanly recorded locally. |
 
 ---
 

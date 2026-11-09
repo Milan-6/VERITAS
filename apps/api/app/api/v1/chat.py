@@ -19,6 +19,7 @@ from app.schemas.chat import (
 )
 from app.services.retrieval import retrieval_service
 from app.services.llm import llm_service
+from app.services.verification import evidence_verifier
 
 logger = logging.getLogger(__name__)
 
@@ -215,7 +216,11 @@ def send_chat_message(
         chat_history=history,
     )
 
-    # 5. Format Citations Metadata
+    # 5. Execute Phase 4 Evidence Verification Engine
+    # Evaluates atomic claim decomposition and NLI entailment scoring
+    verification_report = evidence_verifier.generate_report(assistant_reply, retrieved_chunks)
+
+    # 6. Format Citations Metadata
     is_abstention = assistant_reply == settings.STRICT_ABSTENTION_MESSAGE
     citations_data = []
     if not is_abstention and retrieved_chunks:
@@ -231,12 +236,13 @@ def send_chat_message(
             for c in retrieved_chunks
         ]
 
-    # 6. Persist Assistant Message
+    # 7. Persist Assistant Message
     assistant_msg = ChatMessage(
         session_id=session.id,
         role="assistant",
         content=assistant_reply,
         citations=citations_data,
+        verification_report=verification_report.model_dump(),
     )
     db.add(assistant_msg)
 

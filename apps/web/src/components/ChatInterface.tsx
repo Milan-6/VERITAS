@@ -12,10 +12,16 @@ import {
   FileText,
   Bookmark,
   ChevronRight,
+  ChevronDown,
+  ChevronUp,
   ExternalLink,
   Bot,
   User as UserIcon,
   BookOpen,
+  CheckCircle2,
+  XCircle,
+  AlertTriangle,
+  FileCheck2,
 } from "lucide-react";
 import { ChatSession, ChatMessage, Citation, DocumentItem } from "../types";
 import { api } from "../lib/api";
@@ -33,7 +39,12 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ documents, onOpenU
   const [isLoadingSessions, setIsLoadingSessions] = useState(true);
   const [isSending, setIsSending] = useState(false);
   const [selectedDocFilter, setSelectedDocFilter] = useState<string>("");
+  const [expandedReports, setExpandedReports] = useState<Record<string, boolean>>({});
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const toggleReport = (msgId: string) => {
+    setExpandedReports((prev) => ({ ...prev, [msgId]: !prev[msgId] }));
+  };
 
   // Auto-scroll to bottom of messages
   const scrollToBottom = () => {
@@ -440,6 +451,106 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ documents, onOpenU
                         <div className="whitespace-pre-wrap leading-relaxed">
                           {renderMessageContent(msg.content)}
                         </div>
+
+                        {/* Phase 4: Evidence Verification Report */}
+                        {msg.verification_report && msg.verification_report.claims && msg.verification_report.claims.length > 0 && (
+                          <div className="mt-3 pt-3 border-t border-slate-800/80 space-y-2">
+                            <div
+                              onClick={() => toggleReport(msg.id)}
+                              className="flex items-center justify-between p-2 rounded-xl bg-slate-950/70 border border-slate-800/90 cursor-pointer hover:border-slate-700 transition-colors"
+                            >
+                              <div className="flex items-center space-x-2">
+                                <FileCheck2 className="w-4 h-4 text-cyan-400" />
+                                <span className="text-[11px] font-bold font-mono tracking-wide text-slate-200">
+                                  Evidence Entailment Audit
+                                </span>
+                                <span
+                                  className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase tracking-wider ${
+                                    msg.verification_report.overall_status === "VERIFIED"
+                                      ? "bg-emerald-950/80 text-emerald-300 border border-emerald-800/80"
+                                      : msg.verification_report.overall_status === "PARTIALLY_VERIFIED"
+                                      ? "bg-amber-950/80 text-amber-300 border border-amber-800/80"
+                                      : "bg-red-950/80 text-red-300 border border-red-800/80"
+                                  }`}
+                                >
+                                  {msg.verification_report.overall_status === "VERIFIED"
+                                    ? "100% Entailed"
+                                    : msg.verification_report.overall_status === "PARTIALLY_VERIFIED"
+                                    ? `${msg.verification_report.supported_count}/${msg.verification_report.claims.length} Verified`
+                                    : "Unverified Claims"}
+                                </span>
+                              </div>
+
+                              <div className="flex items-center space-x-2 text-[10px] text-slate-400 font-mono">
+                                <span>{msg.verification_report.claims.length} Atomic Claims</span>
+                                {expandedReports[msg.id] ? (
+                                  <ChevronUp className="w-3.5 h-3.5 text-slate-400" />
+                                ) : (
+                                  <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Expanded Claims List */}
+                            {expandedReports[msg.id] && (
+                              <div className="space-y-2 pt-1">
+                                {msg.verification_report.claims.map((claim, cIdx) => (
+                                  <div
+                                    key={claim.claim_id || cIdx}
+                                    className={`p-2.5 rounded-xl border text-[11px] space-y-1.5 ${
+                                      claim.status === "SUPPORTED"
+                                        ? "bg-emerald-950/20 border-emerald-800/40 text-emerald-100"
+                                        : claim.status === "CONTRADICTED"
+                                        ? "bg-red-950/25 border-red-800/50 text-red-100"
+                                        : "bg-amber-950/20 border-amber-800/40 text-amber-100"
+                                    }`}
+                                  >
+                                    <div className="flex items-start justify-between gap-2">
+                                      <div className="flex items-start space-x-2">
+                                        {claim.status === "SUPPORTED" ? (
+                                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0 mt-0.5" />
+                                        ) : claim.status === "CONTRADICTED" ? (
+                                          <XCircle className="w-3.5 h-3.5 text-red-400 shrink-0 mt-0.5" />
+                                        ) : (
+                                          <AlertTriangle className="w-3.5 h-3.5 text-amber-400 shrink-0 mt-0.5" />
+                                        )}
+                                        <span className="font-medium leading-relaxed">{claim.claim_text}</span>
+                                      </div>
+                                      <span
+                                        className={`text-[9px] font-mono px-1.5 py-0.5 rounded font-bold uppercase shrink-0 ${
+                                          claim.status === "SUPPORTED"
+                                            ? "bg-emerald-900/60 text-emerald-300"
+                                            : claim.status === "CONTRADICTED"
+                                            ? "bg-red-900/60 text-red-300"
+                                            : "bg-amber-900/60 text-amber-300"
+                                        }`}
+                                      >
+                                        {claim.status}
+                                      </span>
+                                    </div>
+
+                                    {claim.source_excerpt && (
+                                      <div className="pl-5 text-[10px] text-slate-300/90 italic font-mono bg-slate-950/40 p-1.5 rounded border border-slate-800/60">
+                                        "{claim.source_excerpt}"
+                                        {claim.document_title && (
+                                          <span className="not-italic text-cyan-400 font-semibold block mt-0.5">
+                                            — {claim.document_title} (p. {claim.page_number})
+                                          </span>
+                                        )}
+                                      </div>
+                                    )}
+
+                                    {claim.reasoning && claim.status !== "SUPPORTED" && (
+                                      <div className="pl-5 text-[10px] text-slate-400 font-mono">
+                                        Note: {claim.reasoning}
+                                      </div>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        )}
 
                         {/* Citation Evidence drawer if present */}
                         {msg.citations && msg.citations.length > 0 && (

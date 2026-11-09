@@ -32,6 +32,7 @@ class ChatMessage(Base):
     role: Mapped[str] = mapped_column(String(20), nullable=False)  # 'user', 'assistant', 'system'
     content: Mapped[str] = mapped_column(Text, nullable=False)
     citations: Mapped[dict | list | None] = mapped_column(JSON, nullable=True)  # Store chunk references/metadata
+    verification_report: Mapped[dict | None] = mapped_column(JSON, nullable=True)  # Phase 4 Verification Report
 
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
 

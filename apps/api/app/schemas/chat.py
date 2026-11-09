@@ -21,6 +21,28 @@ class CitationOut(BaseModel):
     score: Optional[float] = None
 
 
+class VerifiedClaim(BaseModel):
+    claim_id: str
+    claim_text: str
+    status: str  # "SUPPORTED", "CONTRADICTED", "MISSING"
+    document_id: Optional[str] = None
+    document_title: Optional[str] = None
+    page_number: Optional[int] = None
+    section_title: Optional[str] = None
+    chunk_id: Optional[str] = None
+    source_excerpt: Optional[str] = None
+    reasoning: Optional[str] = None
+
+
+class VerificationReport(BaseModel):
+    overall_status: str  # "VERIFIED", "PARTIALLY_VERIFIED", "UNVERIFIED", "ABSTAINED"
+    claims: List[VerifiedClaim] = []
+    supported_count: int = 0
+    contradicted_count: int = 0
+    missing_count: int = 0
+    verification_score: float = 0.0
+
+
 class ChatMessageOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -29,6 +51,7 @@ class ChatMessageOut(BaseModel):
     role: str
     content: str
     citations: Optional[List[Dict[str, Any]]] = None
+    verification_report: Optional[VerificationReport] = None
     created_at: datetime
 
 

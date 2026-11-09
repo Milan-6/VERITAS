@@ -129,12 +129,35 @@ export interface Citation {
   score?: number | null;
 }
 
+export interface VerifiedClaim {
+  claim_id: string;
+  claim_text: string;
+  status: "SUPPORTED" | "CONTRADICTED" | "MISSING";
+  document_id?: string | null;
+  document_title?: string | null;
+  page_number?: number | null;
+  section_title?: string | null;
+  chunk_id?: string | null;
+  source_excerpt?: string | null;
+  reasoning?: string | null;
+}
+
+export interface VerificationReport {
+  overall_status: "VERIFIED" | "PARTIALLY_VERIFIED" | "UNVERIFIED" | "ABSTAINED";
+  claims: VerifiedClaim[];
+  supported_count: number;
+  contradicted_count: number;
+  missing_count: number;
+  verification_score: number;
+}
+
 export interface ChatMessage {
   id: string;
   session_id: string;
   role: "user" | "assistant" | "system";
   content: string;
   citations?: Citation[] | null;
+  verification_report?: VerificationReport | null;
   created_at: string;
 }
 
