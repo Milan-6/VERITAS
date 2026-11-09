@@ -1,4 +1,4 @@
-import { DocumentItem, DocumentDetail, DocumentProcessingJob, User, ChatSession, ChatSessionDetail, ChatMessage, PaperSynthesis, LiteratureMatrix, DiscoverySearchResponse, DirectIngestResponse, CitationNetworkResponse, WorkspaceGraph } from "../types";
+import { DocumentItem, DocumentDetail, DocumentProcessingJob, User, ChatSession, ChatSessionDetail, ChatMessage, PaperSynthesis, LiteratureMatrix, DiscoverySearchResponse, DirectIngestResponse, CitationNetworkResponse, WorkspaceGraph, AgentEvent } from "../types";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
 
@@ -294,6 +294,62 @@ class ApiClient {
     return this.request(`/graph/extract/${documentId}`, {
       method: "POST",
     });
+  }
+
+  // Phase 9: AI Research Agent (SSE Stream)
+  async runAgentTaskStream(
+    objective: string,
+    onEvent: (event: AgentEvent) => void,
+    maxIterations = 5
+  ): Promise<void> {
+    const token = this.getToken();
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+
+    const response = await fetch(`${API_BASE_URL}/agent/task`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        objective,
+        max_iterations: maxIterations,
+      }),
+    });
+
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({ detail: "Agent request failed" }));
+      throw new Error(err.detail || "Agent request failed");
+    }
+
+    const reader = response.body?.getReader();
+    if (!reader) throw new Error("ReadableStream not supported by browser");
+
+    const decoder = new TextDecoder();
+    let buffer = "";
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n\n");
+      buffer = lines.pop() || "";
+
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (trimmed.startsWith("data: ")) {
+          try {
+            const data: AgentEvent = JSON.parse(trimmed.slice(6));
+            onEvent(data);
+          } catch (e) {
+            console.error("Failed to parse SSE event chunk", e);
+          }
+        }
+      }
+    }
   }
 }
 

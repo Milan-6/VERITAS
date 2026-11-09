@@ -34,6 +34,9 @@ from app.core.security import hash_password, create_access_token
 from app.workers.queue import job_manager
 from app.services.vector_store import vector_store
 from app.services.embeddings import DeterministicDenseEmbeddingProvider, GeminiEmbeddingProvider
+from app.services.verification import evidence_verifier
+
+evidence_verifier.api_key = ""
 
 # 1. Force synchronous background task execution
 job_manager.always_eager = True

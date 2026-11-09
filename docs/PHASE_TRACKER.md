@@ -18,7 +18,21 @@
 | **Phase 5** | Scientific Intelligence & Comparative Literature Analysis | **COMPLETED** |
 | **Phase 6** | Academic Research Discovery & Citation Networks | **COMPLETED** |
 | **Phase 8** | Research Knowledge Graph & Relational Entities | **COMPLETED** |
-| **Phase 9** | Autonomous AI Research Agents & Multi-Paper Synthesis | **PLANNED** (Next Phase) |
+| **Phase 9** | Autonomous AI Research Agents & Multi-Paper Synthesis | **COMPLETED** |
+
+---
+
+## Phase 9 Detailed Milestones & Tasks
+
+| Task ID | Milestone / Deliverable | Status | Verification Detail |
+| :--- | :--- | :--- | :--- |
+| **P9-M1** | Prerequisite Verification & Audit | **COMPLETED** | Inspected Phase 8 Knowledge Graph routes and report, verified baseline 48/48 tests passing. |
+| **P9-M2** | Agent Tools & Functions | **COMPLETED** | Created `AgentToolRegistry` in `app/agent/tools.py` with `search_workspace`, `read_document_section`, `extract_document_summary`, `finish_research`. Implemented strict server-side tenant isolation (SEC-01). |
+| **P9-M3** | Agent State Machine & ReAct Loop | **COMPLETED** | Implemented `AgentWorkflow` in `app/agent/workflow.py`. Enforces bounded loop (strictly max 5 iterations), ReAct thought/action cycle, Markdown report synthesis with inline citations, and automated Phase 4 `EvidenceVerifier` entailment check. |
+| **P9-M4** | Streaming API & SSE Protocol | **COMPLETED** | Implemented `POST /api/v1/agent/task` in `app/api/v1/agent.py` emitting real-time Server-Sent Events (`text/event-stream`). Mounted in `app/main.py`. Managed streaming database session factory to eliminate session lifetime race conditions. |
+| **P9-M5** | Frontend Autonomous Agent Cockpit | **COMPLETED** | Built `AgentWorkspaceView.tsx` with objective textarea, iteration limit selector, real-time terminal execution log, markdown report viewer, and Evidence Entailment Audit Card. Added Agent tab and Phase 9 branding in `Header.tsx` and `page.tsx`. Next.js production build verified clean (0 errors). |
+| **P9-M6** | Testing and Security Verification | **COMPLETED** | Created `apps/api/tests/test_agent_workflow.py`. All 51 automated tests passing across the entire platform in 3.21s. Verified tool tenant isolation, bounded loop cutoff, and SSE streaming endpoint. |
+| **P9-M7** | Git Management & Documentation | **COMPLETED** | Authored `docs/VERITAS_PHASE_9_IMPLEMENTATION_REPORT.md` and updated `docs/PHASE_TRACKER.md`. Local git commits cleanly recorded. |
 
 ---
 

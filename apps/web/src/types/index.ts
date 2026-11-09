@@ -293,3 +293,18 @@ export interface WorkspaceGraph {
   nodes: GraphNode[];
   edges: GraphEdge[];
 }
+
+export interface AgentEvent {
+  status: "thinking" | "tool_call" | "generating_report" | "verifying" | "completed" | "error";
+  step?: number;
+  thought?: string;
+  action?: string;
+  tool?: string;
+  args?: any;
+  output_preview?: string;
+  evidence_count?: number;
+  message?: string;
+  report?: string;
+  verification_report?: VerificationReport | null;
+  steps_taken?: number;
+}
