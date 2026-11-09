@@ -2,12 +2,12 @@
 
 import React from "react";
 import { User } from "../types";
-import { ShieldCheck, LogIn, LogOut, User as UserIcon, Plus, Globe, Network, Bot } from "lucide-react";
+import { ShieldCheck, LogIn, LogOut, User as UserIcon, Plus, Globe, Network, Bot, GraduationCap } from "lucide-react";
 
 interface HeaderProps {
   user: User | null;
-  activeTab: "catalog" | "chat" | "matrix" | "discovery" | "graph" | "agent";
-  onTabChange: (tab: "catalog" | "chat" | "matrix" | "discovery" | "graph" | "agent") => void;
+  activeTab: "catalog" | "chat" | "matrix" | "discovery" | "graph" | "agent" | "study";
+  onTabChange: (tab: "catalog" | "chat" | "matrix" | "discovery" | "graph" | "agent" | "study") => void;
   onOpenAuth: () => void;
   onOpenUpload: () => void;
   onLogout: () => void;
@@ -36,7 +36,7 @@ export const Header: React.FC<HeaderProps> = ({
                   VERITAS
                 </span>
                 <span className="text-[10px] font-mono tracking-widest bg-cyan-950/80 text-cyan-400 border border-cyan-800/60 px-1.5 py-0.5 rounded uppercase">
-                  Phase 9
+                  Phase 10
                 </span>
               </div>
               <p className="text-[11px] text-slate-400 tracking-tight font-medium hidden sm:block">
@@ -99,6 +99,17 @@ export const Header: React.FC<HeaderProps> = ({
             >
               <Bot className="w-3.5 h-3.5 text-cyan-400" />
               <span>Autonomous Agent</span>
+            </button>
+            <button
+              onClick={() => onTabChange("study")}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center space-x-1.5 ${
+                activeTab === "study"
+                  ? "bg-cyan-950/80 border border-cyan-800/60 text-cyan-300 font-semibold"
+                  : "text-slate-400 hover:text-slate-200 hover:bg-slate-900"
+              }`}
+            >
+              <GraduationCap className="w-3.5 h-3.5 text-cyan-400" />
+              <span>Study Suite</span>
             </button>
             <button
               onClick={() => onTabChange("chat")}

@@ -1,4 +1,22 @@
-import { DocumentItem, DocumentDetail, DocumentProcessingJob, User, ChatSession, ChatSessionDetail, ChatMessage, PaperSynthesis, LiteratureMatrix, DiscoverySearchResponse, DirectIngestResponse, CitationNetworkResponse, WorkspaceGraph, AgentEvent } from "../types";
+import {
+  DocumentItem,
+  DocumentDetail,
+  DocumentProcessingJob,
+  User,
+  ChatSession,
+  ChatSessionDetail,
+  ChatMessage,
+  PaperSynthesis,
+  LiteratureMatrix,
+  DiscoverySearchResponse,
+  DirectIngestResponse,
+  CitationNetworkResponse,
+  WorkspaceGraph,
+  AgentEvent,
+  FlashcardDeck,
+  Quiz,
+  QuizEvaluationResult,
+} from "../types";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
 
@@ -350,6 +368,60 @@ class ApiClient {
         }
       }
     }
+  }
+
+  // Phase 10: Learning & Research Productivity
+  async getFlashcards(documentId: string): Promise<FlashcardDeck> {
+    return this.request<FlashcardDeck>(`/learning/flashcards/${documentId}`);
+  }
+
+  async generateFlashcards(documentId: string): Promise<FlashcardDeck> {
+    return this.request<FlashcardDeck>(`/learning/flashcards/generate/${documentId}`, {
+      method: "POST",
+    });
+  }
+
+  async getQuiz(documentId: string): Promise<Quiz> {
+    return this.request<Quiz>(`/learning/quiz/${documentId}`);
+  }
+
+  async generateQuiz(documentId: string): Promise<Quiz> {
+    return this.request<Quiz>(`/learning/quiz/generate/${documentId}`, {
+      method: "POST",
+    });
+  }
+
+  async evaluateQuiz(quizId: string, answers: Record<string, string>): Promise<QuizEvaluationResult> {
+    return this.request<QuizEvaluationResult>(`/learning/quiz/${quizId}/evaluate`, {
+      method: "POST",
+      body: JSON.stringify({ answers }),
+    });
+  }
+
+  async downloadFlashcardsAnki(documentId: string, filename = "anki_deck.csv"): Promise<void> {
+    const token = this.getToken();
+    const headers: Record<string, string> = {};
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+
+    const response = await fetch(`${API_BASE_URL}/learning/flashcards/${documentId}/export`, {
+      headers,
+    });
+
+    if (!response.ok) {
+      throw new Error("Failed to export Anki flashcards");
+    }
+
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
   }
 }
 

@@ -11,6 +11,7 @@ import { LiteratureMatrixView } from "../components/LiteratureMatrixView";
 import { GlobalDiscoveryView } from "../components/GlobalDiscoveryView";
 import { KnowledgeGraphView } from "../components/KnowledgeGraphView";
 import { AgentWorkspaceView } from "../components/AgentWorkspaceView";
+import { StudySuiteView } from "../components/StudySuiteView";
 import { DocumentItem, User } from "../types";
 import { api } from "../lib/api";
 import {
@@ -26,11 +27,12 @@ import {
   Globe,
   Network,
   Bot,
+  GraduationCap,
 } from "lucide-react";
 
 export default function Home() {
   const [user, setUser] = useState<User | null>(null);
-  const [activeTab, setActiveTab] = useState<"catalog" | "chat" | "matrix" | "discovery" | "graph" | "agent">("catalog");
+  const [activeTab, setActiveTab] = useState<"catalog" | "chat" | "matrix" | "discovery" | "graph" | "agent" | "study">("catalog");
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isUploadOpen, setIsUploadOpen] = useState(false);
@@ -177,6 +179,8 @@ export default function Home() {
           />
         ) : activeTab === "agent" ? (
           <AgentWorkspaceView documents={documents} />
+        ) : activeTab === "study" ? (
+          <StudySuiteView documents={documents} initialDocumentId={selectedDocId} />
         ) : (
           <>
             {/* Hero & Workspace Banner */}
@@ -186,7 +190,7 @@ export default function Home() {
               <div className="relative z-10 max-w-2xl space-y-3">
                 <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-cyan-950/60 border border-cyan-800/60 text-cyan-300 text-xs font-mono">
                   <ShieldCheck className="w-3.5 h-3.5" />
-                  <span>Phase 9 — Autonomous AI Research Agent & Multi-Paper Synthesis</span>
+                  <span>Phase 10 — Learning & Research Productivity (Flashcards, Quizzes & Anki)</span>
                 </div>
 
                 <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">

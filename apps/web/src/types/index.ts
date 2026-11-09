@@ -308,3 +308,68 @@ export interface AgentEvent {
   verification_report?: VerificationReport | null;
   steps_taken?: number;
 }
+
+export interface Flashcard {
+  id: string;
+  deck_id: string;
+  front_concept: string;
+  back_definition: string;
+  source_citation?: string | null;
+  page_number?: number | null;
+  section_title?: string | null;
+  source_excerpt?: string | null;
+  created_at: string;
+}
+
+export interface FlashcardDeck {
+  id: string;
+  tenant_id: string;
+  document_id: string;
+  title: string;
+  card_count: number;
+  created_at: string;
+  updated_at: string;
+  cards: Flashcard[];
+}
+
+export interface QuizQuestion {
+  question_id: string;
+  question_text: string;
+  options: string[];
+  correct_answer: string;
+  explanation: string;
+  source_citation?: string | null;
+  page_number?: number | null;
+}
+
+export interface Quiz {
+  id: string;
+  tenant_id: string;
+  document_id: string;
+  title: string;
+  total_questions: number;
+  created_at: string;
+  updated_at: string;
+  questions: QuizQuestion[];
+}
+
+export interface QuizQuestionResult {
+  question_id: string;
+  question_text: string;
+  user_answer?: string | null;
+  correct_answer: string;
+  is_correct: boolean;
+  explanation: string;
+  source_citation?: string | null;
+  page_number?: number | null;
+}
+
+export interface QuizEvaluationResult {
+  quiz_id: string;
+  document_id: string;
+  score: number;
+  total_questions: number;
+  percentage: number;
+  results: QuizQuestionResult[];
+}
+
