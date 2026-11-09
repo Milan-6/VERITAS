@@ -1,8 +1,16 @@
 import uuid
 from datetime import datetime
+from enum import Enum
 from sqlalchemy import String, DateTime, ForeignKey, Index
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.core.database import Base
+
+
+class WorkspaceRole(str, Enum):
+    OWNER = "OWNER"
+    EDITOR = "EDITOR"
+    VIEWER = "VIEWER"
+
 
 class Workspace(Base):
     __tablename__ = "workspaces"
@@ -16,7 +24,26 @@ class Workspace(Base):
 
     # Relationships
     owner = relationship("User", back_populates="owned_workspaces")
+    members = relationship("WorkspaceMember", back_populates="workspace", cascade="all, delete-orphan")
     document_associations = relationship("DocumentWorkspaceAssociation", back_populates="workspace", cascade="all, delete-orphan")
+
+
+class WorkspaceMember(Base):
+    __tablename__ = "workspace_members"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    workspace_id: Mapped[str] = mapped_column(String(36), ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    role: Mapped[str] = mapped_column(String(32), default=WorkspaceRole.VIEWER.value, nullable=False)
+    joined_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+
+    __table_args__ = (
+        Index("ix_workspace_member_unique", "workspace_id", "user_id", unique=True),
+    )
+
+    # Relationships
+    workspace = relationship("Workspace", back_populates="members")
+    user = relationship("User", back_populates="workspace_memberships")
 
 
 class DocumentWorkspaceAssociation(Base):
@@ -35,3 +62,4 @@ class DocumentWorkspaceAssociation(Base):
     # Relationships
     workspace = relationship("Workspace", back_populates="document_associations")
     document = relationship("Document", back_populates="workspace_associations")
+

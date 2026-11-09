@@ -12,6 +12,7 @@ class FlashcardDeck(Base):
 
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     tenant_id = Column(String(64), nullable=False, index=True)
+    workspace_id = Column(String(36), ForeignKey("workspaces.id", ondelete="SET NULL"), nullable=True, index=True)
     document_id = Column(String(36), ForeignKey("documents.id", ondelete="CASCADE"), nullable=False, index=True)
     title = Column(String(255), nullable=False)
     card_count = Column(Integer, default=0, nullable=False)
@@ -25,6 +26,7 @@ class FlashcardDeck(Base):
 
     cards = relationship("Flashcard", back_populates="deck", cascade="all, delete-orphan", order_by="Flashcard.created_at.asc()")
     document = relationship("Document", backref="flashcard_decks")
+    workspace = relationship("Workspace", backref="flashcard_decks")
 
     __table_args__ = (
         Index("ix_flashcard_decks_tenant_doc", "tenant_id", "document_id"),

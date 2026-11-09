@@ -1,6 +1,6 @@
 from app.core.database import Base
 from app.models.user import User
-from app.models.workspace import Workspace, DocumentWorkspaceAssociation
+from app.models.workspace import Workspace, WorkspaceMember, WorkspaceRole, DocumentWorkspaceAssociation
 from app.models.document import (
     Document,
     DocumentMetadata,
@@ -21,6 +21,8 @@ __all__ = [
     "Base",
     "User",
     "Workspace",
+    "WorkspaceMember",
+    "WorkspaceRole",
     "DocumentWorkspaceAssociation",
     "Document",
     "DocumentMetadata",

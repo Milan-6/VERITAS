@@ -12,7 +12,8 @@ import { GlobalDiscoveryView } from "../components/GlobalDiscoveryView";
 import { KnowledgeGraphView } from "../components/KnowledgeGraphView";
 import { AgentWorkspaceView } from "../components/AgentWorkspaceView";
 import { StudySuiteView } from "../components/StudySuiteView";
-import { DocumentItem, User } from "../types";
+import { WorkspaceSettingsModal } from "../components/WorkspaceSettingsModal";
+import { DocumentItem, User, WorkspaceItem } from "../types";
 import { api } from "../lib/api";
 import {
   FileText,
@@ -38,6 +39,26 @@ export default function Home() {
   const [isUploadOpen, setIsUploadOpen] = useState(false);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [selectedDocId, setSelectedDocId] = useState<string | null>(null);
+  const [workspaces, setWorkspaces] = useState<WorkspaceItem[]>([]);
+  const [activeWorkspaceId, setActiveWorkspaceId] = useState<string | null>(null);
+  const [isWorkspaceSettingsOpen, setIsWorkspaceSettingsOpen] = useState(false);
+
+  const fetchWorkspaces = useCallback(async () => {
+    try {
+      if (!api.getToken()) {
+        setWorkspaces([]);
+        setActiveWorkspaceId(null);
+        return;
+      }
+      const list = await api.listWorkspaces();
+      setWorkspaces(list);
+      if (list.length > 0 && !activeWorkspaceId) {
+        setActiveWorkspaceId(list[0].id);
+      }
+    } catch (err) {
+      console.error("Error fetching workspaces:", err);
+    }
+  }, [activeWorkspaceId]);
 
   // Check initial user authentication
   useEffect(() => {
@@ -46,6 +67,7 @@ export default function Home() {
         if (api.getToken()) {
           const u = await api.getMe();
           setUser(u);
+          fetchWorkspaces();
         }
       } catch {
         api.logout();
@@ -53,7 +75,7 @@ export default function Home() {
       }
     };
     checkAuth();
-  }, []);
+  }, [fetchWorkspaces]);
 
   // Fetch document catalog
   const fetchDocuments = useCallback(async () => {
@@ -108,6 +130,8 @@ export default function Home() {
     ["UPLOADED", "QUEUED", "PROCESSING"].includes(d.status)
   ).length;
 
+  const activeWorkspace = workspaces.find((w) => w.id === activeWorkspaceId) || null;
+
   return (
     <div className="min-h-screen flex flex-col bg-[#080C14]">
       {/* Header */}
@@ -127,6 +151,10 @@ export default function Home() {
           }
         }}
         onLogout={handleLogout}
+        activeWorkspace={activeWorkspace}
+        workspaces={workspaces}
+        onSelectWorkspace={(wsId) => setActiveWorkspaceId(wsId)}
+        onOpenWorkspaceSettings={() => setIsWorkspaceSettingsOpen(true)}
       />
 
       {/* Main Content Area */}
@@ -302,6 +330,14 @@ export default function Home() {
           setIsUploadOpen(false);
           fetchDocuments();
         }}
+      />
+
+      <WorkspaceSettingsModal
+        isOpen={isWorkspaceSettingsOpen}
+        onClose={() => setIsWorkspaceSettingsOpen(false)}
+        activeWorkspaceId={activeWorkspaceId}
+        onSelectWorkspace={(wsId) => setActiveWorkspaceId(wsId)}
+        onWorkspacesChanged={fetchWorkspaces}
       />
 
       <AuthModal

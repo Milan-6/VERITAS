@@ -1,8 +1,8 @@
 "use client";
 
 import React from "react";
-import { User } from "../types";
-import { ShieldCheck, LogIn, LogOut, User as UserIcon, Plus, Globe, Network, Bot, GraduationCap } from "lucide-react";
+import { User, WorkspaceItem } from "../types";
+import { ShieldCheck, LogIn, LogOut, User as UserIcon, Plus, Globe, Network, Bot, GraduationCap, Building, Users } from "lucide-react";
 
 interface HeaderProps {
   user: User | null;
@@ -11,6 +11,10 @@ interface HeaderProps {
   onOpenAuth: () => void;
   onOpenUpload: () => void;
   onLogout: () => void;
+  activeWorkspace?: WorkspaceItem | null;
+  workspaces?: WorkspaceItem[];
+  onSelectWorkspace?: (wsId: string) => void;
+  onOpenWorkspaceSettings?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -20,6 +24,10 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenAuth,
   onOpenUpload,
   onLogout,
+  activeWorkspace,
+  workspaces = [],
+  onSelectWorkspace,
+  onOpenWorkspaceSettings,
 }) => {
   return (
     <header className="border-b border-[#1E293B] bg-[#0A0E1A]/80 backdrop-blur-md sticky top-0 z-40">
@@ -36,7 +44,7 @@ export const Header: React.FC<HeaderProps> = ({
                   VERITAS
                 </span>
                 <span className="text-[10px] font-mono tracking-widest bg-cyan-950/80 text-cyan-400 border border-cyan-800/60 px-1.5 py-0.5 rounded uppercase">
-                  Phase 10
+                  Phase 11
                 </span>
               </div>
               <p className="text-[11px] text-slate-400 tracking-tight font-medium hidden sm:block">
@@ -127,6 +135,42 @@ export const Header: React.FC<HeaderProps> = ({
 
         {/* Action Controls */}
         <div className="flex items-center space-x-3">
+          {/* Workspace Switcher */}
+          {user && (
+            <div className="flex items-center space-x-1.5 bg-slate-900 border border-slate-800 rounded-lg p-1">
+              <button
+                onClick={onOpenWorkspaceSettings}
+                className="flex items-center space-x-1.5 px-2 py-1 rounded text-xs text-slate-300 hover:text-white hover:bg-slate-800 transition-colors"
+                title="Manage Workspace & Collaborators"
+              >
+                <Building className="w-3.5 h-3.5 text-cyan-400" />
+                <span className="font-medium max-w-[130px] truncate">
+                  {activeWorkspace ? activeWorkspace.name : "Personal Workspace"}
+                </span>
+                {activeWorkspace?.role && (
+                  <span
+                    className={`text-[9px] px-1 py-0.2 rounded font-mono uppercase font-semibold ${
+                      activeWorkspace.role === "OWNER"
+                        ? "bg-amber-950 text-amber-300 border border-amber-800/60"
+                        : activeWorkspace.role === "EDITOR"
+                        ? "bg-blue-950 text-blue-300 border border-blue-800/60"
+                        : "bg-slate-800 text-slate-400"
+                    }`}
+                  >
+                    {activeWorkspace.role}
+                  </span>
+                )}
+              </button>
+              <button
+                onClick={onOpenWorkspaceSettings}
+                title="Workspace Settings & Members"
+                className="p-1 rounded text-slate-400 hover:text-cyan-400 hover:bg-slate-800 transition-colors"
+              >
+                <Users className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
+
           <button
             onClick={onOpenUpload}
             className="flex items-center space-x-2 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-semibold text-xs sm:text-sm px-3.5 py-2 rounded-lg shadow-sm shadow-cyan-500/20 transition-all active:scale-[0.98]"

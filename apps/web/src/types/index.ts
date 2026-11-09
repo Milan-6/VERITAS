@@ -373,3 +373,29 @@ export interface QuizEvaluationResult {
   results: QuizQuestionResult[];
 }
 
+export interface WorkspaceMember {
+  id: string;
+  workspace_id: string;
+  user_id: string;
+  email: string;
+  full_name?: string | null;
+  role: "OWNER" | "EDITOR" | "VIEWER" | string;
+  joined_at: string;
+}
+
+export interface WorkspaceItem {
+  id: string;
+  name: string;
+  slug: string;
+  owner_id: string;
+  role?: "OWNER" | "EDITOR" | "VIEWER" | string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface WorkspaceDetail extends WorkspaceItem {
+  members: WorkspaceMember[];
+  document_count: number;
+}
+
+

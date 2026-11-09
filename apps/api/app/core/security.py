@@ -15,7 +15,7 @@ from app.core.config import settings
 from app.core.database import get_db
 from app.models.user import User
 from app.models.document import Document
-from app.models.workspace import DocumentWorkspaceAssociation
+from app.models.workspace import Workspace, WorkspaceMember, DocumentWorkspaceAssociation
 
 bearer_scheme = HTTPBearer(auto_error=False)
 
@@ -162,6 +162,25 @@ def verify_document_access(
         
     # Check workspace permissions
     if doc.workspace_id:
+        ws = db.query(Workspace).filter(Workspace.id == doc.workspace_id).first()
+        if ws:
+            # Workspace owner has full access
+            if ws.owner_id == user.id:
+                return doc
+
+            # Workspace member check
+            member = db.query(WorkspaceMember).filter(
+                WorkspaceMember.workspace_id == doc.workspace_id,
+                WorkspaceMember.user_id == user.id,
+            ).first()
+            if member:
+                if require_write and member.role.upper() not in ["OWNER", "EDITOR"]:
+                    raise HTTPException(
+                        status_code=status.HTTP_403_FORBIDDEN,
+                        detail="Insufficient permissions to modify this document in this workspace",
+                    )
+                return doc
+
         assoc = db.query(DocumentWorkspaceAssociation).filter(
             DocumentWorkspaceAssociation.document_id == document_id,
             DocumentWorkspaceAssociation.workspace_id == doc.workspace_id,

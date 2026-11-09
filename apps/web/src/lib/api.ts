@@ -16,6 +16,9 @@ import {
   FlashcardDeck,
   Quiz,
   QuizEvaluationResult,
+  WorkspaceItem,
+  WorkspaceDetail,
+  WorkspaceMember,
 } from "../types";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
@@ -418,6 +421,62 @@ class ApiClient {
     const a = document.createElement("a");
     a.href = url;
     a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+  }
+
+  // Phase 11: Workspaces & Multi-User Collaboration
+  async listWorkspaces(): Promise<WorkspaceItem[]> {
+    return this.request<WorkspaceItem[]>("/workspaces");
+  }
+
+  async createWorkspace(name: string): Promise<WorkspaceItem> {
+    return this.request<WorkspaceItem>("/workspaces", {
+      method: "POST",
+      body: JSON.stringify({ name }),
+    });
+  }
+
+  async getWorkspace(workspaceId: string): Promise<WorkspaceDetail> {
+    return this.request<WorkspaceDetail>(`/workspaces/${workspaceId}`);
+  }
+
+  async inviteWorkspaceMember(workspaceId: string, email: string, role = "VIEWER"): Promise<WorkspaceMember> {
+    return this.request<WorkspaceMember>(`/workspaces/${workspaceId}/members`, {
+      method: "POST",
+      body: JSON.stringify({ email, role }),
+    });
+  }
+
+  async removeWorkspaceMember(workspaceId: string, userId: string): Promise<{ message: string }> {
+    return this.request<{ message: string }>(`/workspaces/${workspaceId}/members/${userId}`, {
+      method: "DELETE",
+    });
+  }
+
+  // Phase 11: PDF Dossier Export
+  async downloadDossierPdf(documentId: string, filename?: string): Promise<void> {
+    const token = this.getToken();
+    const headers: Record<string, string> = {};
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+
+    const response = await fetch(`${API_BASE_URL}/export/dossier/${documentId}`, {
+      headers,
+    });
+
+    if (!response.ok) {
+      throw new Error("Failed to export research dossier PDF");
+    }
+
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename || `VERITAS_Dossier_${documentId.slice(0, 8)}.pdf`;
     document.body.appendChild(a);
     a.click();
     window.URL.revokeObjectURL(url);

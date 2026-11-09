@@ -20,7 +20,21 @@
 | **Phase 8** | Research Knowledge Graph & Relational Entities | **COMPLETED** |
 | **Phase 9** | Autonomous AI Research Agents & Multi-Paper Synthesis | **COMPLETED** |
 | **Phase 10** | Learning & Research Productivity (Flashcards, Quizzes & Anki) | **COMPLETED** |
-| **Phase 11** | Collaboration, Export & Integrations | **PLANNED** (Next Phase) |
+| **Phase 11** | Collaboration, Export & Integrations | **COMPLETED** |
+
+---
+
+## Phase 11 Detailed Milestones & Tasks
+
+| Task ID | Milestone / Deliverable | Status | Verification Detail |
+| :--- | :--- | :--- | :--- |
+| **P11-M1** | Prerequisite Verification & Baseline Audit | **COMPLETED** | Inspected Phase 10 report and schema; verified all 56 baseline tests passing. |
+| **P11-M2** | Multi-User Workspace Schemas & Migrations | **COMPLETED** | Added `WorkspaceRole` enum and `WorkspaceMember` model with unique constraint on `(workspace_id, user_id)` in `app/models/workspace.py`. Linked `workspace_id` in `learning.py`. Applied Alembic migration `ad2674906aa4`. |
+| **P11-M3** | Collaboration API & RBAC Authorization | **COMPLETED** | Built `app/api/v1/workspaces.py` with endpoints for workspace creation, member invitations (`EDITOR`/`VIEWER`), and member removal. Upgraded `verify_document_access` in `app/core/security.py` to grant workspace members document access. |
+| **P11-M4** | PDF Research Dossier Export Pipeline | **COMPLETED** | Built `DossierExportService` in `app/services/dossier_export.py` with ReportLab and `NumberedCanvas`. Assembles metadata, 5-point synthesis, Knowledge Graph entities, and citations. Created `GET /api/v1/export/dossier/{id}` in `app/api/v1/export.py`. |
+| **P11-M5** | Frontend Collaboration & Export UI | **COMPLETED** | Built `WorkspaceSettingsModal.tsx`, added workspace selector & settings trigger in `Header.tsx`, updated phase badge to Phase 11, and added "Export Dossier (PDF)" in `DocumentDetailView.tsx`. Next.js build clean (0 errors). |
+| **P11-M6** | Testing & Security Verification | **COMPLETED** | Implemented `apps/api/tests/test_collaboration_and_export.py`. 60/60 tests passing across entire platform in 4.21s. Verified RBAC restrictions (VIEWER 403 on invite), shared document access, and PDF `%PDF-` generation. |
+| **P11-M7** | Git Management & Documentation | **COMPLETED** | Authored `docs/VERITAS_PHASE_11_IMPLEMENTATION_REPORT.md` and updated `docs/PHASE_TRACKER.md`. Local git commits recorded. |
 
 ---
 

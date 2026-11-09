@@ -45,6 +45,7 @@ export const DocumentDetailView: React.FC<DocumentDetailViewProps> = ({
   const [isLoadingCitations, setIsLoadingCitations] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [retrying, setRetrying] = useState(false);
+  const [isExportingDossier, setIsExportingDossier] = useState(false);
 
   const fetchDetail = async () => {
     setIsLoading(true);
@@ -85,6 +86,18 @@ export const DocumentDetailView: React.FC<DocumentDetailViewProps> = ({
       alert(`Retry failed: ${err.message}`);
     } finally {
       setRetrying(false);
+    }
+  };
+
+  const handleExportDossierPdf = async () => {
+    if (!detail) return;
+    try {
+      setIsExportingDossier(true);
+      await api.downloadDossierPdf(detail.id, `VERITAS_Dossier_${detail.id.slice(0, 8)}.pdf`);
+    } catch (err: any) {
+      alert(err?.message || "Failed to download PDF dossier");
+    } finally {
+      setIsExportingDossier(false);
     }
   };
 
@@ -131,8 +144,22 @@ export const DocumentDetailView: React.FC<DocumentDetailViewProps> = ({
 
         <div className="flex items-center space-x-2 shrink-0">
           <button
+            onClick={handleExportDossierPdf}
+            disabled={isExportingDossier}
+            title="Export Research Intelligence Dossier (PDF)"
+            className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-slate-950 font-semibold text-xs shadow-sm transition-all"
+          >
+            {isExportingDossier ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <FileText className="w-3.5 h-3.5" />
+            )}
+            <span>Export Dossier</span>
+          </button>
+
+          <button
             onClick={() => window.open(api.getDownloadUrl(detail.id), "_blank")}
-            title="Download PDF"
+            title="Download Original PDF"
             className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
           >
             <Download className="w-4 h-4" />
