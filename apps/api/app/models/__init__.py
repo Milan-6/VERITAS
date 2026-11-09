@@ -13,6 +13,7 @@ from app.models.document import (
     ProcessingStage,
 )
 from app.models.chunk import SemanticChunk
+from app.models.chat import ChatSession, ChatMessage
 
 __all__ = [
     "Base",
@@ -26,6 +27,8 @@ __all__ = [
     "ExtractedSection",
     "ExtractedContent",
     "SemanticChunk",
+    "ChatSession",
+    "ChatMessage",
     "DocumentStatus",
     "JobStatus",
     "ProcessingStage",
