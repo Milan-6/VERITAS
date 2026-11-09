@@ -223,3 +223,45 @@ export interface LiteratureMatrix {
   contradictions_and_divergences: MatrixContradiction[];
   generated_at: string;
 }
+
+export interface ExternalPaperMetadata {
+  id: string;
+  title: string;
+  authors: string[];
+  publication_year?: number | null;
+  abstract?: string | null;
+  doi?: string | null;
+  landing_page_url?: string | null;
+  pdf_url?: string | null;
+  is_open_access: boolean;
+  citation_count: number;
+  venue?: string | null;
+  source: string;
+}
+
+export interface DiscoverySearchResponse {
+  query: string;
+  total_results: number;
+  page: number;
+  per_page: number;
+  results: ExternalPaperMetadata[];
+}
+
+export interface DirectIngestResponse {
+  document_id: string;
+  job_id: string;
+  filename: string;
+  title: string;
+  status: string;
+  message: string;
+}
+
+export interface CitationNetworkResponse {
+  document_id: string;
+  document_title: string;
+  doi?: string | null;
+  citation_count: number;
+  references: ExternalPaperMetadata[];
+  cited_by: ExternalPaperMetadata[];
+  top_related: ExternalPaperMetadata[];
+}

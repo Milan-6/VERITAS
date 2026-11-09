@@ -8,6 +8,7 @@ import { DocumentDetailView } from "../components/DocumentDetailView";
 import { AuthModal } from "../components/AuthModal";
 import { ChatInterface } from "../components/ChatInterface";
 import { LiteratureMatrixView } from "../components/LiteratureMatrixView";
+import { GlobalDiscoveryView } from "../components/GlobalDiscoveryView";
 import { DocumentItem, User } from "../types";
 import { api } from "../lib/api";
 import {
@@ -20,11 +21,12 @@ import {
   RefreshCw,
   MessageSquare,
   Table,
+  Globe,
 } from "lucide-react";
 
 export default function Home() {
   const [user, setUser] = useState<User | null>(null);
-  const [activeTab, setActiveTab] = useState<"catalog" | "chat" | "matrix">("catalog");
+  const [activeTab, setActiveTab] = useState<"catalog" | "chat" | "matrix" | "discovery">("catalog");
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isUploadOpen, setIsUploadOpen] = useState(false);
@@ -158,6 +160,12 @@ export default function Home() {
 
             <LiteratureMatrixView documents={documents} />
           </div>
+        ) : activeTab === "discovery" ? (
+          <GlobalDiscoveryView
+            documents={documents}
+            onDocumentImported={fetchDocuments}
+            onOpenDocument={(id) => setSelectedDocId(id)}
+          />
         ) : (
           <>
             {/* Hero & Workspace Banner */}
@@ -167,7 +175,7 @@ export default function Home() {
               <div className="relative z-10 max-w-2xl space-y-3">
                 <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-cyan-950/60 border border-cyan-800/60 text-cyan-300 text-xs font-mono">
                   <ShieldCheck className="w-3.5 h-3.5" />
-                  <span>Phase 5 — Scientific Intelligence & Comparative Literature Analysis</span>
+                  <span>Phase 6 — Academic Research Discovery & Citation Networks</span>
                 </div>
 
                 <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">

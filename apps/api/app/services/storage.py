@@ -121,6 +121,45 @@ class StorageService:
         sha256_hash = hasher.hexdigest()
         return sanitized_name, str(dest_path.resolve()), total_size, sha256_hash
 
+    def save_pdf_bytes(self, content: bytes, original_filename: str) -> Tuple[str, str, int, str]:
+        """
+        Validates and securely persists raw PDF bytes from an external download.
+        Enforces size limits, magic bytes validation, and SHA-256 hashing.
+        Returns: (sanitized_name, storage_path, file_size, sha256_hash)
+        """
+        if not original_filename.lower().endswith(".pdf"):
+            original_filename = f"{original_filename}.pdf"
+        sanitized_name = sanitize_filename(original_filename)
+
+        total_size = len(content)
+        if total_size == 0:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Empty file rejected: downloaded size is 0 bytes.",
+            )
+
+        if total_size > settings.MAX_UPLOAD_SIZE_BYTES:
+            raise HTTPException(
+                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                detail=f"File exceeds maximum allowed size of {settings.MAX_UPLOAD_SIZE_BYTES // (1024*1024)}MB.",
+            )
+
+        if not content.startswith(PDF_MAGIC_BYTES):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Malformed file: Missing valid PDF header signature (%PDF-).",
+            )
+
+        storage_uuid = str(uuid.uuid4())
+        dest_filename = f"{storage_uuid}.pdf"
+        dest_path = self.storage_dir / dest_filename
+
+        with open(dest_path, "wb") as f:
+            f.write(content)
+
+        sha256_hash = hashlib.sha256(content).hexdigest()
+        return sanitized_name, str(dest_path.resolve()), total_size, sha256_hash
+
     def delete_file(self, file_path: str) -> bool:
         """Safely removes a stored file."""
         try:

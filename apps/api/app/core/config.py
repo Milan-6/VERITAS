@@ -63,6 +63,13 @@ class Settings(BaseModel):
     LLM_MODEL: str = Field(default_factory=lambda: os.getenv("LLM_MODEL", "gemini-2.0-flash"))
     LLM_TEMPERATURE: float = 0.0  # Greedy deterministic decoding
     STRICT_ABSTENTION_MESSAGE: str = "This is not mentioned in the provided research corpus."
+
+    # External Discovery Settings (Phase 6)
+    OPENALEX_MAILTO: str = Field(
+        default_factory=lambda: os.getenv("OPENALEX_MAILTO", "veritas-research@antigravity.ai")
+    )
+    DISCOVERY_REQUEST_TIMEOUT: float = 15.0
+    DISCOVERY_USER_AGENT: str = "VERITAS-Research-Intelligence/1.0 (mailto:veritas-research@antigravity.ai)"
     
     # CORS
     BACKEND_CORS_ORIGINS: list[str] = [

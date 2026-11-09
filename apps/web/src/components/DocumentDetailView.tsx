@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { DocumentDetail, DocumentItem, PaperSynthesis } from "../types";
+import { DocumentDetail, DocumentItem, PaperSynthesis, CitationNetworkResponse } from "../types";
 import {
   X,
   FileText,
@@ -21,6 +21,7 @@ import {
   Database,
   Award,
   AlertTriangle,
+  Network,
 } from "lucide-react";
 import { api } from "../lib/api";
 
@@ -39,7 +40,9 @@ export const DocumentDetailView: React.FC<DocumentDetailViewProps> = ({
   const [synthesis, setSynthesis] = useState<PaperSynthesis | null>(null);
   const [isLoadingSynthesis, setIsLoadingSynthesis] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<"synthesis" | "metadata" | "sections" | "chunks" | "pages" | "raw">("synthesis");
+  const [activeTab, setActiveTab] = useState<"synthesis" | "citations" | "metadata" | "sections" | "chunks" | "pages" | "raw">("synthesis");
+  const [citations, setCitations] = useState<CitationNetworkResponse | null>(null);
+  const [isLoadingCitations, setIsLoadingCitations] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [retrying, setRetrying] = useState(false);
 
@@ -159,6 +162,7 @@ export const DocumentDetailView: React.FC<DocumentDetailViewProps> = ({
       <div className="flex items-center space-x-1 px-4 border-b border-[#1E293B] bg-[#080C14] overflow-x-auto">
         {[
           { id: "synthesis", label: "Structured Synthesis", icon: Sparkles },
+          { id: "citations", label: "Citation Graph", icon: Network },
           { id: "metadata", label: "Overview & Metadata", icon: BookOpen },
           { id: "sections", label: `Sections (${detail.extracted_sections?.length || 0})`, icon: Layers },
           { id: "chunks", label: `Provenance (${detail.extracted_contents?.length || 0})`, icon: Hash },
@@ -169,7 +173,20 @@ export const DocumentDetailView: React.FC<DocumentDetailViewProps> = ({
           return (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id as any)}
+              onClick={async () => {
+                setActiveTab(tab.id as any);
+                if (tab.id === "citations" && !citations) {
+                  setIsLoadingCitations(true);
+                  try {
+                    const res = await api.getCitationNetwork(documentId);
+                    setCitations(res);
+                  } catch (e) {
+                    console.error("Failed to load citations:", e);
+                  } finally {
+                    setIsLoadingCitations(false);
+                  }
+                }
+              }}
               className={`flex items-center space-x-2 py-3 px-3 text-xs font-semibold border-b-2 transition-all whitespace-nowrap ${
                 activeTab === tab.id
                   ? "border-cyan-400 text-cyan-400 bg-cyan-950/20"
@@ -306,6 +323,143 @@ export const DocumentDetailView: React.FC<DocumentDetailViewProps> = ({
             )}
           </div>
         )}
+
+        {/* Tab 0.5: Citation Graph */}
+        {activeTab === "citations" && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+              <div>
+                <h3 className="text-xs font-bold uppercase tracking-wider text-cyan-400 font-mono flex items-center space-x-2">
+                  <Network className="w-4 h-4 text-cyan-400" />
+                  <span>Citation Network & Related Literature</span>
+                </h3>
+                <p className="text-[11px] text-slate-400 mt-0.5">
+                  Global academic graph connected via OpenAlex works index
+                </p>
+              </div>
+
+              {isLoadingCitations && (
+                <div className="flex items-center space-x-2 text-xs text-cyan-400 font-mono">
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  <span>Querying OpenAlex...</span>
+                </div>
+              )}
+            </div>
+
+            {isLoadingCitations ? (
+              <div className="p-12 text-center space-y-2">
+                <Loader2 className="w-7 h-7 text-cyan-400 animate-spin mx-auto" />
+                <p className="text-xs text-slate-400 font-mono">
+                  Traversing citation graph for inbound and outbound references...
+                </p>
+              </div>
+            ) : citations ? (
+              <div className="space-y-6">
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="p-3 bg-slate-900 border border-slate-800 rounded-xl text-center">
+                    <span className="text-[11px] text-slate-400 font-medium">Recorded Citations</span>
+                    <p className="text-lg font-bold text-cyan-400 font-mono mt-0.5">
+                      {citations.citation_count.toLocaleString()}
+                    </p>
+                  </div>
+                  <div className="p-3 bg-slate-900 border border-slate-800 rounded-xl text-center">
+                    <span className="text-[11px] text-slate-400 font-medium">Outbound References</span>
+                    <p className="text-lg font-bold text-white font-mono mt-0.5">
+                      {citations.references.length}
+                    </p>
+                  </div>
+                  <div className="p-3 bg-slate-900 border border-slate-800 rounded-xl text-center">
+                    <span className="text-[11px] text-slate-400 font-medium">Inbound Citing Papers</span>
+                    <p className="text-lg font-bold text-white font-mono mt-0.5">
+                      {citations.cited_by.length}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Inbound Citations */}
+                <div className="space-y-2">
+                  <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider font-mono">
+                    Most Influential Citing Works (Inbound)
+                  </h4>
+                  {citations.cited_by.length === 0 ? (
+                    <div className="p-3 bg-slate-900/40 border border-slate-800 rounded-xl text-xs text-slate-400">
+                      No inbound citations mapped in OpenAlex for this document.
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {citations.cited_by.map((c) => (
+                        <div
+                          key={c.id}
+                          className="p-3 bg-slate-900/60 border border-slate-800 rounded-xl flex items-center justify-between text-xs gap-3"
+                        >
+                          <div>
+                            <div className="font-semibold text-white">{c.title}</div>
+                            <div className="text-[11px] text-slate-400 mt-0.5">
+                              {c.authors.slice(0, 3).join(", ")} {c.publication_year ? `(${c.publication_year})` : ""} • {c.citation_count} citations
+                            </div>
+                          </div>
+                          {c.landing_page_url && (
+                            <a
+                              href={c.landing_page_url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-cyan-400 hover:underline text-[11px] whitespace-nowrap"
+                            >
+                              View Paper ↗
+                            </a>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Related Research */}
+                <div className="space-y-2">
+                  <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider font-mono">
+                    Related Literature
+                  </h4>
+                  {citations.top_related.length === 0 ? (
+                    <div className="p-3 bg-slate-900/40 border border-slate-800 rounded-xl text-xs text-slate-400">
+                      No related literature mapped.
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {citations.top_related.map((r) => (
+                        <div
+                          key={r.id}
+                          className="p-3 bg-slate-900/60 border border-slate-800 rounded-xl flex items-center justify-between text-xs gap-3"
+                        >
+                          <div>
+                            <div className="font-semibold text-white">{r.title}</div>
+                            <div className="text-[11px] text-slate-400 mt-0.5">
+                              {r.authors.slice(0, 3).join(", ")} {r.publication_year ? `(${r.publication_year})` : ""} • {r.citation_count} citations
+                            </div>
+                          </div>
+                          {r.landing_page_url && (
+                            <a
+                              href={r.landing_page_url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-cyan-400 hover:underline text-[11px] whitespace-nowrap"
+                            >
+                              View Paper ↗
+                            </a>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="p-8 text-center text-xs text-slate-400">
+                Click above to traverse the OpenAlex citation network.
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Tab 1: Overview & Metadata */}
         {activeTab === "metadata" && (
           <div className="space-y-6 text-sm">

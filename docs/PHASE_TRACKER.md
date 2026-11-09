@@ -16,7 +16,22 @@
 | **Phase 3** | Grounded AI Research Assistant & Conversational Memory | **COMPLETED** |
 | **Phase 4** | Evidence Verification Engine & Claim Entailment Analysis | **COMPLETED** |
 | **Phase 5** | Scientific Intelligence & Comparative Literature Analysis | **COMPLETED** |
-| **Phase 6** | Autonomous Academic Search & Discovery Engine | **PLANNED** (Next Phase) |
+| **Phase 6** | Academic Research Discovery & Citation Networks | **COMPLETED** |
+| **Phase 7** | Scientific Knowledge Graph & Entity Extraction | **PLANNED** (Next Phase) |
+
+---
+
+## Phase 6 Detailed Milestones & Tasks
+
+| Task ID | Milestone / Deliverable | Status | Verification Detail |
+| :--- | :--- | :--- | :--- |
+| **P6-M1** | Prerequisite Verification & Audit | **COMPLETED** | Inspected Phase 5 analysis routes and report, verified baseline 38/38 tests passing. |
+| **P6-M2** | External Discovery Service Integration | **COMPLETED** | Implemented `ExternalDiscoveryService` in `app/services/discovery.py` and schemas in `app/schemas/discovery.py`. OpenAlex works query client with polite pool `mailto`, inverted index abstract decoder, and 300s TTL cache. |
+| **P6-M3** | Direct Ingestion Pipeline & SSRF Protection | **COMPLETED** | Built `validate_safe_url` blocking private IPs, loopback, link-local IMDS `169.254.169.254`, and non-HTTP protocols. Implemented `download_and_ingest_paper` streaming PDF download, magic bytes validation, and automatic processing queue entry. |
+| **P6-M4** | Citation Network Mapping | **COMPLETED** | Built `get_citation_network` querying OpenAlex for inbound citing works (`cites:`), outbound references, and co-occurrence related literature recommendations. |
+| **P6-M5** | API & Frontend Integration | **COMPLETED** | Implemented `/api/v1/discovery/search`, `/api/v1/discovery/ingest`, and `/api/v1/discovery/citations/{id}` in `apps/api/app/api/v1/discovery.py`. Built `GlobalDiscoveryView.tsx` with search filters, direct DOI import, and citation network drawer. Added "Citation Graph" tab in `DocumentDetailView.tsx`. Next.js production build verified. |
+| **P6-M6** | Testing and Security Verification | **COMPLETED** | Created `apps/api/tests/test_academic_discovery.py`. 44 automated tests passing (6 new Phase 6 tests). Verified OpenAlex search normalization, citation graph mapping, SSRF rejections, and direct PDF download flow. |
+| **P6-M7** | Git Management & Documentation | **COMPLETED** | Authored `docs/VERITAS_PHASE_6_IMPLEMENTATION_REPORT.md` and updated `docs/PHASE_TRACKER.md`. Local git commits recorded. |
 
 ---
 

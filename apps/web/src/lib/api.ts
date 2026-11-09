@@ -1,4 +1,4 @@
-import { DocumentItem, DocumentDetail, DocumentProcessingJob, User, ChatSession, ChatSessionDetail, ChatMessage, PaperSynthesis, LiteratureMatrix } from "../types";
+import { DocumentItem, DocumentDetail, DocumentProcessingJob, User, ChatSession, ChatSessionDetail, ChatMessage, PaperSynthesis, LiteratureMatrix, DiscoverySearchResponse, DirectIngestResponse, CitationNetworkResponse } from "../types";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
 
@@ -241,6 +241,43 @@ class ApiClient {
         topic_query: topicQuery || null,
       }),
     });
+  }
+
+  // Phase 6: Academic Research Discovery
+  async searchGlobalLiterature(
+    query: string,
+    page = 1,
+    perPage = 10,
+    author?: string,
+    year?: number
+  ): Promise<DiscoverySearchResponse> {
+    const params = new URLSearchParams({
+      query,
+      page: page.toString(),
+      per_page: perPage.toString(),
+    });
+    if (author) params.append("author", author);
+    if (year) params.append("year", year.toString());
+    return this.request<DiscoverySearchResponse>(`/discovery/search?${params.toString()}`);
+  }
+
+  async ingestPaperFromExternal(
+    doiOrUrl: string,
+    workspaceId?: string,
+    title?: string
+  ): Promise<DirectIngestResponse> {
+    return this.request<DirectIngestResponse>("/discovery/ingest", {
+      method: "POST",
+      body: JSON.stringify({
+        doi_or_url: doiOrUrl,
+        workspace_id: workspaceId || null,
+        title: title || null,
+      }),
+    });
+  }
+
+  async getCitationNetwork(documentId: string): Promise<CitationNetworkResponse> {
+    return this.request<CitationNetworkResponse>(`/discovery/citations/${documentId}`);
   }
 }
 
