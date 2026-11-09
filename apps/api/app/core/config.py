@@ -58,6 +58,11 @@ class Settings(BaseModel):
     )
     EMBEDDING_MODEL: str = "models/text-embedding-004"
     EMBEDDING_DIMENSION: int = 768
+
+    # LLM Settings (Phase 3)
+    LLM_MODEL: str = Field(default_factory=lambda: os.getenv("LLM_MODEL", "gemini-2.0-flash"))
+    LLM_TEMPERATURE: float = 0.0  # Greedy deterministic decoding
+    STRICT_ABSTENTION_MESSAGE: str = "This is not mentioned in the provided research corpus."
     
     # CORS
     BACKEND_CORS_ORIGINS: list[str] = [

@@ -6,6 +6,7 @@ import { DocumentList } from "../components/DocumentList";
 import { UploadModal } from "../components/UploadModal";
 import { DocumentDetailView } from "../components/DocumentDetailView";
 import { AuthModal } from "../components/AuthModal";
+import { ChatInterface } from "../components/ChatInterface";
 import { DocumentItem, User } from "../types";
 import { api } from "../lib/api";
 import {
@@ -16,10 +17,12 @@ import {
   Activity,
   CheckCircle2,
   RefreshCw,
+  MessageSquare,
 } from "lucide-react";
 
 export default function Home() {
   const [user, setUser] = useState<User | null>(null);
+  const [activeTab, setActiveTab] = useState<"catalog" | "chat">("catalog");
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isUploadOpen, setIsUploadOpen] = useState(false);
@@ -100,6 +103,11 @@ export default function Home() {
       {/* Header */}
       <Header
         user={user}
+        activeTab={activeTab}
+        onTabChange={(tab) => {
+          setSelectedDocId(null);
+          setActiveTab(tab);
+        }}
         onOpenAuth={() => setIsAuthOpen(true)}
         onOpenUpload={() => {
           if (!user) {
@@ -113,52 +121,73 @@ export default function Home() {
 
       {/* Main Content Area */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-        {/* Hero & Workspace Banner */}
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-[#0E1424] via-[#141C2E] to-[#0A0E1A] border border-[#1E293B] p-6 sm:p-8">
-          <div className="absolute right-0 top-0 w-96 h-96 bg-cyan-500/5 rounded-full blur-3xl pointer-events-none" />
-
-          <div className="relative z-10 max-w-2xl space-y-3">
-            <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-cyan-950/60 border border-cyan-800/60 text-cyan-300 text-xs font-mono">
-              <ShieldCheck className="w-3.5 h-3.5" />
-              <span>Phase 1 — Deterministic Ingestion & Extraction Engine</span>
+        {activeTab === "chat" ? (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight flex items-center space-x-2.5">
+                  <MessageSquare className="w-6 h-6 text-cyan-400" />
+                  <span>VERITAS Grounded AI Assistant</span>
+                </h1>
+                <p className="text-xs text-slate-400 mt-1">
+                  Greedy deterministic decoding (temp=0.0) • Strict provenance citations • Mandatory abstention
+                </p>
+              </div>
             </div>
 
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-              VERITAS Research Intelligence
-            </h1>
-
-            <p className="text-sm text-slate-400 leading-relaxed font-normal">
-              High-fidelity PDF document ingestion with multi-stage layout decomposition,
-              cryptographic integrity verification, and page-level provenance preservation.
-            </p>
+            <ChatInterface
+              documents={documents}
+              onOpenUpload={() => setIsUploadOpen(true)}
+            />
           </div>
+        ) : (
+          <>
+            {/* Hero & Workspace Banner */}
+            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-[#0E1424] via-[#141C2E] to-[#0A0E1A] border border-[#1E293B] p-6 sm:p-8">
+              <div className="absolute right-0 top-0 w-96 h-96 bg-cyan-500/5 rounded-full blur-3xl pointer-events-none" />
 
-          {/* Metrics bar */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6 pt-6 border-t border-slate-800/80">
-            <div className="p-3 rounded-xl bg-slate-900/60 border border-slate-800">
-              <span className="text-[11px] text-slate-400 font-medium">Total Ingested</span>
-              <p className="text-xl font-bold text-slate-100 font-mono mt-0.5">{totalDocs}</p>
-            </div>
+              <div className="relative z-10 max-w-2xl space-y-3">
+                <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-cyan-950/60 border border-cyan-800/60 text-cyan-300 text-xs font-mono">
+                  <ShieldCheck className="w-3.5 h-3.5" />
+                  <span>Phase 3 — Grounded AI Assistant & Hybrid Retrieval</span>
+                </div>
 
-            <div className="p-3 rounded-xl bg-slate-900/60 border border-slate-800">
-              <span className="text-[11px] text-slate-400 font-medium">Ready for RAG</span>
-              <p className="text-xl font-bold text-emerald-400 font-mono mt-0.5">{completedDocs}</p>
-            </div>
+                <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
+                  VERITAS Research Intelligence
+                </h1>
 
-            <div className="p-3 rounded-xl bg-slate-900/60 border border-slate-800">
-              <span className="text-[11px] text-slate-400 font-medium">Decomposed Pages</span>
-              <p className="text-xl font-bold text-cyan-400 font-mono mt-0.5">{totalPages}</p>
-            </div>
+                <p className="text-sm text-slate-400 leading-relaxed font-normal">
+                  High-fidelity PDF document ingestion with multi-stage layout decomposition,
+                  dual vector hybrid retrieval (Dense + BM25), and grounded AI synthesis.
+                </p>
+              </div>
 
-            <div className="p-3 rounded-xl bg-slate-900/60 border border-slate-800">
-              <span className="text-[11px] text-slate-400 font-medium">Active Workers</span>
-              <p className="text-xl font-bold text-sky-400 font-mono mt-0.5 flex items-center space-x-1.5">
-                <span>{processingCount}</span>
-                {processingCount > 0 && <Activity className="w-4 h-4 animate-pulse text-cyan-400" />}
-              </p>
+              {/* Metrics bar */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6 pt-6 border-t border-slate-800/80">
+                <div className="p-3 rounded-xl bg-slate-900/60 border border-slate-800">
+                  <span className="text-[11px] text-slate-400 font-medium">Total Ingested</span>
+                  <p className="text-xl font-bold text-slate-100 font-mono mt-0.5">{totalDocs}</p>
+                </div>
+
+                <div className="p-3 rounded-xl bg-slate-900/60 border border-slate-800">
+                  <span className="text-[11px] text-slate-400 font-medium">Ready for RAG</span>
+                  <p className="text-xl font-bold text-emerald-400 font-mono mt-0.5">{completedDocs}</p>
+                </div>
+
+                <div className="p-3 rounded-xl bg-slate-900/60 border border-slate-800">
+                  <span className="text-[11px] text-slate-400 font-medium">Decomposed Pages</span>
+                  <p className="text-xl font-bold text-cyan-400 font-mono mt-0.5">{totalPages}</p>
+                </div>
+
+                <div className="p-3 rounded-xl bg-slate-900/60 border border-slate-800">
+                  <span className="text-[11px] text-slate-400 font-medium">Active Workers</span>
+                  <p className="text-xl font-bold text-sky-400 font-mono mt-0.5 flex items-center space-x-1.5">
+                    <span>{processingCount}</span>
+                    {processingCount > 0 && <Activity className="w-4 h-4 animate-pulse text-cyan-400" />}
+                  </p>
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
 
         {/* Auth prompt if not logged in */}
         {!user && !isLoading && (
@@ -206,6 +235,8 @@ export default function Home() {
             onRefresh={fetchDocuments}
           />
         </div>
+        </>
+        )}
       </main>
 
       {/* Footer */}

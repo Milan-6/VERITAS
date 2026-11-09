@@ -1,4 +1,4 @@
-import { DocumentItem, DocumentDetail, DocumentProcessingJob, User } from "../types";
+import { DocumentItem, DocumentDetail, DocumentProcessingJob, User, ChatSession, ChatSessionDetail, ChatMessage } from "../types";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
 
@@ -193,6 +193,38 @@ class ApiClient {
         document_id: documentId || null,
         top_k: topK,
       }),
+    });
+  }
+
+  // Phase 3: Grounded AI Assistant & Chat Endpoints
+  async createChatSession(title?: string, documentId?: string): Promise<ChatSession> {
+    return this.request<ChatSession>("/chat/sessions", {
+      method: "POST",
+      body: JSON.stringify({
+        title: title || "New Research Session",
+        document_id: documentId || null,
+      }),
+    });
+  }
+
+  async listChatSessions(): Promise<ChatSession[]> {
+    return this.request<ChatSession[]>("/chat/sessions");
+  }
+
+  async getChatSession(sessionId: string): Promise<ChatSessionDetail> {
+    return this.request<ChatSessionDetail>(`/chat/sessions/${sessionId}`);
+  }
+
+  async deleteChatSession(sessionId: string): Promise<void> {
+    return this.request<void>(`/chat/sessions/${sessionId}`, {
+      method: "DELETE",
+    });
+  }
+
+  async sendChatMessage(sessionId: string, content: string): Promise<ChatMessage> {
+    return this.request<ChatMessage>(`/chat/sessions/${sessionId}/messages`, {
+      method: "POST",
+      body: JSON.stringify({ content }),
     });
   }
 }

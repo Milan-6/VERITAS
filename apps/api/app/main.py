@@ -6,13 +6,14 @@ from app.core.database import Base, engine
 from app.api.v1.auth import router as auth_router
 from app.api.v1.documents import router as documents_router
 from app.api.v1.retrieval import router as retrieval_router
+from app.api.v1.chat import router as chat_router
 
 # Initialize tables
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
     title="VERITAS API",
-    description="VERITAS: Research Intelligence. Grounded in Truth. Core Ingestion, Extraction & Hybrid Retrieval Engine.",
+    description="VERITAS: Research Intelligence. Grounded in Truth. Core Ingestion, Extraction, Hybrid Retrieval & Grounded AI Assistant.",
     version="1.0.0",
     docs_url="/docs",
     redoc_url="/redoc",
@@ -32,6 +33,7 @@ app.add_middleware(
 app.include_router(auth_router, prefix=settings.API_V1_PREFIX)
 app.include_router(documents_router, prefix=settings.API_V1_PREFIX)
 app.include_router(retrieval_router, prefix=settings.API_V1_PREFIX)
+app.include_router(chat_router, prefix=settings.API_V1_PREFIX)
 
 
 @app.get("/health", tags=["Health"])

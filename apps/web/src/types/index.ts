@@ -119,3 +119,36 @@ export interface SearchResponse {
   total_results: number;
   results: SearchResultChunk[];
 }
+
+export interface Citation {
+  document_id: string;
+  document_title: string;
+  page_number: number;
+  section_title: string;
+  chunk_id: string;
+  score?: number | null;
+}
+
+export interface ChatMessage {
+  id: string;
+  session_id: string;
+  role: "user" | "assistant" | "system";
+  content: string;
+  citations?: Citation[] | null;
+  created_at: string;
+}
+
+export interface ChatSession {
+  id: string;
+  user_id: string;
+  workspace_id?: string | null;
+  document_id?: string | null;
+  title: string;
+  created_at: string;
+  updated_at: string;
+  message_count: number;
+}
+
+export interface ChatSessionDetail extends ChatSession {
+  messages: ChatMessage[];
+}
