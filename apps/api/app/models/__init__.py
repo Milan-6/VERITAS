@@ -16,6 +16,7 @@ from app.models.chunk import SemanticChunk
 from app.models.chat import ChatSession, ChatMessage
 from app.models.graph import GraphNode, GraphEdge
 from app.models.learning import FlashcardDeck, Flashcard, Quiz
+from app.models.integration import IntegrationCredential, WebhookSubscription
 
 __all__ = [
     "Base",
@@ -38,6 +39,8 @@ __all__ = [
     "FlashcardDeck",
     "Flashcard",
     "Quiz",
+    "IntegrationCredential",
+    "WebhookSubscription",
     "DocumentStatus",
     "JobStatus",
     "ProcessingStage",

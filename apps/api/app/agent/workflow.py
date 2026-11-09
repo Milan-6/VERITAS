@@ -309,4 +309,23 @@ All claims in this report are tied to indexed workspace chunks. The Evidence Ver
             "steps_taken": len(self.action_history),
             "evidence_count": len(self.gathered_evidence),
         }
+
+        # Trigger Webhook Event: agent.task.completed
+        try:
+            from app.services.webhook_dispatcher import webhook_dispatcher
+            webhook_dispatcher.dispatch_event(
+                event_name="agent.task.completed",
+                workspace_id=tenant_id,
+                payload={
+                    "task": task,
+                    "steps_taken": len(self.action_history),
+                    "evidence_count": len(self.gathered_evidence),
+                    "claims_count": len(verification_report.claims),
+                    "entailment_ratio": verification_report.entailment_ratio,
+                },
+                db=db,
+            )
+        except Exception as wh_err:
+            logger.warning(f"Webhook dispatch non-fatal warning on agent completion: {wh_err}")
+
         yield f"data: {json.dumps(complete_payload)}\n\n"

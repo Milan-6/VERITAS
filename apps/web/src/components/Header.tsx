@@ -44,7 +44,7 @@ export const Header: React.FC<HeaderProps> = ({
                   VERITAS
                 </span>
                 <span className="text-[10px] font-mono tracking-widest bg-cyan-950/80 text-cyan-400 border border-cyan-800/60 px-1.5 py-0.5 rounded uppercase">
-                  Phase 11
+                  Phase 12
                 </span>
               </div>
               <p className="text-[11px] text-slate-400 tracking-tight font-medium hidden sm:block">

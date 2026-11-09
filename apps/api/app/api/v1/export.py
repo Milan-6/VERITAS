@@ -41,6 +41,23 @@ def export_research_dossier_pdf(
 
     clean_filename = f"VERITAS_Dossier_{doc.id[:8]}.pdf"
 
+    # Trigger Webhook Event: dossier.generated
+    try:
+        from app.services.webhook_dispatcher import webhook_dispatcher
+        webhook_dispatcher.dispatch_event(
+            event_name="dossier.generated",
+            workspace_id=tenant_id,
+            payload={
+                "document_id": doc.id,
+                "title": doc.doc_metadata.title if doc.doc_metadata else doc.filename,
+                "filename": clean_filename,
+                "pdf_size_bytes": len(pdf_bytes),
+            },
+            db=db,
+        )
+    except Exception as wh_err:
+        logger.warning(f"Webhook dispatch non-fatal warning on dossier export: {wh_err}")
+
     return Response(
         content=pdf_bytes,
         media_type="application/pdf",

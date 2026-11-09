@@ -19,6 +19,9 @@ import {
   WorkspaceItem,
   WorkspaceDetail,
   WorkspaceMember,
+  IntegrationStatus,
+  WebhookSubscriptionItem,
+  ZoteroSyncSummary,
 } from "../types";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
@@ -481,6 +484,58 @@ class ApiClient {
     a.click();
     window.URL.revokeObjectURL(url);
     document.body.removeChild(a);
+  }
+
+  // Phase 12: Reference Managers & Advanced Integrations
+  async connectZotero(apiKey: string, userId: string, workspaceId?: string): Promise<IntegrationStatus> {
+    return this.request<IntegrationStatus>("/integrations/zotero/connect", {
+      method: "POST",
+      body: JSON.stringify({
+        api_key: apiKey,
+        user_id: userId,
+        workspace_id: workspaceId || null,
+      }),
+    });
+  }
+
+  async syncZotero(workspaceId: string, limit = 50): Promise<ZoteroSyncSummary> {
+    return this.request<ZoteroSyncSummary>("/integrations/zotero/sync", {
+      method: "POST",
+      body: JSON.stringify({ workspace_id: workspaceId, limit }),
+    });
+  }
+
+  async getIntegrationStatus(workspaceId?: string): Promise<IntegrationStatus[]> {
+    const query = workspaceId ? `?workspace_id=${encodeURIComponent(workspaceId)}` : "";
+    return this.request<IntegrationStatus[]>(`/integrations/status${query}`);
+  }
+
+  // Phase 12: Webhooks API
+  async createWebhook(
+    workspaceId: string,
+    url: string,
+    eventsSubscribed: string[],
+    description?: string,
+  ): Promise<WebhookSubscriptionItem> {
+    return this.request<WebhookSubscriptionItem>("/webhooks", {
+      method: "POST",
+      body: JSON.stringify({
+        workspace_id: workspaceId,
+        url,
+        events_subscribed: eventsSubscribed,
+        description: description || null,
+      }),
+    });
+  }
+
+  async listWebhooks(workspaceId: string): Promise<WebhookSubscriptionItem[]> {
+    return this.request<WebhookSubscriptionItem[]>(`/webhooks?workspace_id=${encodeURIComponent(workspaceId)}`);
+  }
+
+  async deleteWebhook(webhookId: string): Promise<{ message: string }> {
+    return this.request<{ message: string }>(`/webhooks/${webhookId}`, {
+      method: "DELETE",
+    });
   }
 }
 

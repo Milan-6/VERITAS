@@ -238,6 +238,24 @@ class DocumentProcessingPipeline:
             except Exception as kg_err:
                 logger.warning(f"Knowledge graph extraction non-fatal warning for doc {doc.id}: {str(kg_err)}")
 
+            # Trigger Webhook Dispatch: document.ingested
+            try:
+                from app.services.webhook_dispatcher import webhook_dispatcher
+                webhook_dispatcher.dispatch_event(
+                    event_name="document.ingested",
+                    workspace_id=doc.workspace_id or tenant_id,
+                    payload={
+                        "document_id": doc.id,
+                        "filename": doc.filename,
+                        "status": doc.status,
+                        "title": doc.doc_metadata.title if doc.doc_metadata else doc.filename,
+                        "chunks_count": len(chunk_records) if chunk_records else 0,
+                    },
+                    db=db,
+                )
+            except Exception as wh_err:
+                logger.warning(f"Webhook dispatch non-fatal warning for doc {doc.id}: {str(wh_err)}")
+
             return True
 
         except Exception as e:

@@ -14,13 +14,14 @@ from app.api.v1.agent import router as agent_router
 from app.api.v1.learning import router as learning_router
 from app.api.v1.workspaces import router as workspaces_router
 from app.api.v1.export import router as export_router
+from app.api.v1.integrations import router as integrations_router
 
 # Initialize tables
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
     title="VERITAS API",
-    description="VERITAS: Research Intelligence. Grounded in Truth. Core Ingestion, Extraction, Hybrid Retrieval, Evidence Verification, Literature Analysis, Academic Discovery, Knowledge Graph, Autonomous Agent, Learning Productivity & Multi-User Collaboration.",
+    description="VERITAS: Research Intelligence. Grounded in Truth. Core Ingestion, Extraction, Hybrid Retrieval, Evidence Verification, Literature Analysis, Academic Discovery, Knowledge Graph, Autonomous Agent, Learning Productivity, Multi-User Collaboration & Advanced Integrations.",
     version="1.0.0",
     docs_url="/docs",
     redoc_url="/redoc",
@@ -48,6 +49,7 @@ app.include_router(agent_router, prefix=settings.API_V1_PREFIX)
 app.include_router(learning_router, prefix=settings.API_V1_PREFIX)
 app.include_router(workspaces_router, prefix=settings.API_V1_PREFIX)
 app.include_router(export_router, prefix=settings.API_V1_PREFIX)
+app.include_router(integrations_router, prefix=settings.API_V1_PREFIX)
 
 
 @app.get("/health", tags=["Health"])
@@ -58,5 +60,5 @@ def health_check():
         "product": settings.PROJECT_NAME,
         "tagline": settings.TAGLINE,
         "version": "1.0.0",
-        "phase": "Phase 11 - Collaboration, Export & Integrations",
+        "phase": "Phase 12 - Advanced Integrations",
     }

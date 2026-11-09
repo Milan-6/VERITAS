@@ -398,4 +398,35 @@ export interface WorkspaceDetail extends WorkspaceItem {
   document_count: number;
 }
 
+export interface IntegrationStatus {
+  id: string;
+  provider: string;
+  external_user_id?: string | null;
+  is_active: boolean;
+  workspace_id?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface WebhookSubscriptionItem {
+  id: string;
+  workspace_id: string;
+  url: string;
+  events_subscribed: string[];
+  secret_key: string;
+  is_active: boolean;
+  description?: string | null;
+  created_at: string;
+}
+
+export interface ZoteroSyncSummary {
+  status: string;
+  provider: string;
+  total_items_fetched: number;
+  synced_references: number;
+  documents_created: number;
+  skipped_or_existing: number;
+}
+
+
 

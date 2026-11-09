@@ -21,6 +21,21 @@
 | **Phase 9** | Autonomous AI Research Agents & Multi-Paper Synthesis | **COMPLETED** |
 | **Phase 10** | Learning & Research Productivity (Flashcards, Quizzes & Anki) | **COMPLETED** |
 | **Phase 11** | Collaboration, Export & Integrations | **COMPLETED** |
+| **Phase 12** | Advanced Integrations (Zotero, Webhooks & Encryption) | **COMPLETED** |
+
+---
+
+## Phase 12 Detailed Milestones & Tasks
+
+| Task ID | Milestone / Deliverable | Status | Verification Detail |
+| :--- | :--- | :--- | :--- |
+| **P12-M1** | Prerequisite Verification & Audit | **COMPLETED** | Inspected Phase 11 report, verified background worker readiness and baseline 60/60 tests passing. |
+| **P12-M2** | Reference Manager & Webhook Database Schemas | **COMPLETED** | Created `IntegrationCredential` and `WebhookSubscription` models in `app/models/integration.py`. Implemented Fernet symmetric encryption at rest in `app/core/encryption.py`. Applied Alembic migration `86ed3b6f4b30`. |
+| **P12-M3** | Zotero & Mendeley Sync Services | **COMPLETED** | Built `ZoteroIntegrationService` in `app/services/reference_managers.py` for API verification, reference parsing, and workspace catalog synchronization. Created `MendeleyIntegrationService` interface stub. |
+| **P12-M4** | Secure Webhook Dispatch Pipeline | **COMPLETED** | Built `WebhookDispatcher` in `app/services/webhook_dispatcher.py` with HMAC-SHA256 signature headers, 5s timeout, and SSRF URL blocking. Instrumented event hooks for `document.ingested`, `agent.task.completed`, and `dossier.generated`. |
+| **P12-M5** | API & Frontend Integrations UI | **COMPLETED** | Built endpoints in `app/api/v1/integrations.py`. Added "Integrations & API" tab in `WorkspaceSettingsModal.tsx` for Zotero sync, Webhook registration, and secret copying. Next.js production build verified clean (0 errors). |
+| **P12-M6** | Testing & Security Verification | **COMPLETED** | Authored `apps/api/tests/test_advanced_integrations.py`. Verified Fernet encryption at rest, SSRF blocking (127.0.0.1/metadata), HMAC signatures, and mocked Zotero sync. 65/65 automated tests passing in 5.34s. |
+| **P12-M7** | Git Management & Documentation | **COMPLETED** | Authored `docs/VERITAS_PHASE_12_IMPLEMENTATION_REPORT.md` and updated `docs/PHASE_TRACKER.md`. Local git commits recorded. |
 
 ---
 
