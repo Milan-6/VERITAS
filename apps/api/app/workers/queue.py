@@ -4,6 +4,7 @@ from concurrent.futures import ThreadPoolExecutor
 from typing import Dict, Set
 from datetime import datetime
 
+from app.core.config import settings
 from app.core.database import SessionLocal
 from app.models.document import Document, DocumentProcessingJob, DocumentStatus, JobStatus
 from app.services.processing_pipeline import processing_pipeline
@@ -12,16 +13,20 @@ logger = logging.getLogger(__name__)
 
 
 class BackgroundJobManager:
-    def __init__(self, max_workers: int = 4, session_factory=None):
+    def __init__(self, max_workers: int = 4, session_factory=None, always_eager: bool | None = None):
         self.executor = ThreadPoolExecutor(max_workers=max_workers, thread_name_prefix="veritas_worker_")
         self._active_jobs: Set[str] = set()
         self._lock = threading.Lock()
         self.session_factory = session_factory or SessionLocal
+        self.always_eager = (
+            always_eager if always_eager is not None else settings.CELERY_TASK_ALWAYS_EAGER
+        )
 
     def enqueue_job(self, job_id: str) -> bool:
         """
-        Enqueues a DocumentProcessingJob for asynchronous background processing.
-        Updates job and document status to QUEUED.
+        Enqueues a DocumentProcessingJob for processing.
+        If always_eager is True (e.g. during testing), executes synchronously immediately.
+        Otherwise submits to background thread pool.
         """
         with self._lock:
             if job_id in self._active_jobs:
@@ -42,7 +47,12 @@ class BackgroundJobManager:
         finally:
             db.close()
 
-        # Submit to thread pool
+        # Synchronous execution if eager mode enabled (e.g. testing)
+        if self.always_eager:
+            self._run_job_wrapper(job_id)
+            return True
+
+        # Otherwise submit to thread pool
         self.executor.submit(self._run_job_wrapper, job_id)
         return True
 

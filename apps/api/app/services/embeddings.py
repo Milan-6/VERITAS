@@ -53,10 +53,10 @@ class GeminiEmbeddingProvider(BaseEmbeddingProvider):
         self.model = model
         self.base_url = f"https://generativelanguage.googleapis.com/v1beta/{model}"
 
-    def _call_with_retry(self, url: str, json_data: dict, max_retries: int = 4) -> dict:
+    def _call_with_retry(self, url: str, json_data: dict, max_retries: int = 4, timeout: float = 5.0) -> dict:
         for attempt in range(max_retries):
             try:
-                with httpx.Client(timeout=30.0) as client:
+                with httpx.Client(timeout=timeout) as client:
                     resp = client.post(
                         f"{url}?key={self.api_key}",
                         json=json_data,

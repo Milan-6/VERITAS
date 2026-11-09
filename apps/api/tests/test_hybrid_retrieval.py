@@ -11,7 +11,7 @@ def test_tenant_isolation_in_hybrid_retrieval():
     Proves that User A cannot retrieve embedded chunks belonging to User B,
     even when querying with identical semantic and keyword terms.
     """
-    test_client = QdrantClient(":memory:")
+    test_client = QdrantClient(location=":memory:", timeout=5.0)
     collection_name = f"test_retrieval_{uuid.uuid4().hex[:8]}"
     vs = QdrantVectorStore(collection_name=collection_name, client=test_client)
     retriever = HybridRetrievalService(vs=vs)

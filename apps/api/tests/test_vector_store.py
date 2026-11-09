@@ -5,8 +5,8 @@ from app.services.chunker import SemanticChunkData
 
 
 def test_qdrant_vector_store_indexing_and_deletion():
-    # Use dedicated in-memory Qdrant client for isolated test
-    test_client = QdrantClient(":memory:")
+    # Use dedicated in-memory Qdrant client for isolated test with strict 5.0s timeout
+    test_client = QdrantClient(location=":memory:", timeout=5.0)
     collection_name = f"test_coll_{uuid.uuid4().hex[:8]}"
 
     vs = QdrantVectorStore(collection_name=collection_name, client=test_client)

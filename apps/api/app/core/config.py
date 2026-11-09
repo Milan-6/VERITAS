@@ -33,12 +33,21 @@ class Settings(BaseModel):
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24  # 24 hours
 
+    # Task Queue / Background Jobs
+    CELERY_TASK_ALWAYS_EAGER: bool = Field(
+        default_factory=lambda: os.getenv("CELERY_TASK_ALWAYS_EAGER", "false").lower() in ("true", "1", "yes")
+    )
+
     # Vector Database (Qdrant)
     QDRANT_HOST: str | None = Field(default_factory=lambda: os.getenv("QDRANT_HOST", None))
     QDRANT_PORT: int = Field(default_factory=lambda: int(os.getenv("QDRANT_PORT", "6333")))
     QDRANT_URL: str | None = Field(default_factory=lambda: os.getenv("QDRANT_URL", None))
     QDRANT_API_KEY: str | None = Field(default_factory=lambda: os.getenv("QDRANT_API_KEY", None))
     QDRANT_COLLECTION: str = "veritas_research_chunks"
+    QDRANT_TIMEOUT: float = Field(default_factory=lambda: float(os.getenv("QDRANT_TIMEOUT", "5.0")))
+    QDRANT_IN_MEMORY: bool = Field(
+        default_factory=lambda: os.getenv("QDRANT_IN_MEMORY", "false").lower() in ("true", "1", "yes")
+    )
     QDRANT_LOCAL_PATH: str = Field(
         default_factory=lambda: os.getenv("QDRANT_LOCAL_PATH", str(BASE_DIR / "data" / "qdrant"))
     )

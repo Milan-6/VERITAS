@@ -24,28 +24,35 @@ class QdrantVectorStore:
     def _init_client(self) -> QdrantClient:
         """
         Connects to Qdrant server (e.g. Docker localhost:6333 or cloud URL),
-        falling back to local persistent storage path if remote server is unreachable.
+        falling back to local in-memory or persistent storage path if remote server is unreachable.
+        Uses a strict timeout (default 5.0s) to fail fast and prevent hanging.
         """
+        timeout = settings.QDRANT_TIMEOUT
+
+        if settings.QDRANT_IN_MEMORY:
+            logger.info("Using in-memory Qdrant client (:memory:)")
+            return QdrantClient(location=":memory:", timeout=timeout)
+
         if settings.QDRANT_URL:
             try:
-                logger.info(f"Connecting to Qdrant at {settings.QDRANT_URL}")
-                return QdrantClient(url=settings.QDRANT_URL, api_key=settings.QDRANT_API_KEY, timeout=5.0)
+                logger.info(f"Connecting to Qdrant at {settings.QDRANT_URL} (timeout={timeout}s)")
+                return QdrantClient(url=settings.QDRANT_URL, api_key=settings.QDRANT_API_KEY, timeout=timeout)
             except Exception as e:
                 logger.warning(f"Could not connect to Qdrant URL {settings.QDRANT_URL}: {e}")
 
         if settings.QDRANT_HOST:
             try:
-                c = QdrantClient(host=settings.QDRANT_HOST, port=settings.QDRANT_PORT, timeout=2.0)
+                c = QdrantClient(host=settings.QDRANT_HOST, port=settings.QDRANT_PORT, timeout=timeout)
                 c.get_collections()
                 logger.info(f"Connected to Qdrant server at {settings.QDRANT_HOST}:{settings.QDRANT_PORT}")
                 return c
             except Exception:
-                logger.info("Remote Qdrant server unreachable. Falling back to local embedded Qdrant.")
+                logger.info("Remote Qdrant server unreachable. Falling back to local Qdrant engine.")
 
         # Default: local embedded Qdrant storage engine
         local_path = settings.QDRANT_LOCAL_PATH
         os.makedirs(local_path, exist_ok=True)
-        return QdrantClient(path=local_path)
+        return QdrantClient(path=local_path, timeout=timeout)
 
     def _ensure_collection(self):
         """Creates collection with dense and sparse vector configurations if not existing."""
