@@ -175,3 +175,51 @@ export interface ChatSession {
 export interface ChatSessionDetail extends ChatSession {
   messages: ChatMessage[];
 }
+
+export interface SynthesisPoint {
+  topic: string;
+  summary: string;
+  source_excerpt?: string | null;
+  page_number?: number | null;
+  section_title?: string | null;
+  confidence_score: number;
+}
+
+export interface PaperSynthesis {
+  document_id: string;
+  document_title: string;
+  problem_statement: SynthesisPoint;
+  methodology: SynthesisPoint;
+  dataset_used: SynthesisPoint;
+  key_results: SynthesisPoint;
+  limitations: SynthesisPoint;
+  created_at: string;
+}
+
+export interface MatrixColumn {
+  document_id: string;
+  document_title: string;
+  problem_statement: string;
+  methodology: string;
+  dataset_used: string;
+  key_results: string;
+  limitations: string;
+}
+
+export interface MatrixContradiction {
+  aspect: string;
+  paper_a_id: string;
+  paper_a_title: string;
+  paper_b_id: string;
+  paper_b_title: string;
+  description: string;
+  divergence_level: "HIGH" | "MEDIUM" | "LOW";
+}
+
+export interface LiteratureMatrix {
+  topic_query?: string | null;
+  document_count: number;
+  columns: MatrixColumn[];
+  contradictions_and_divergences: MatrixContradiction[];
+  generated_at: string;
+}

@@ -7,6 +7,7 @@ import { UploadModal } from "../components/UploadModal";
 import { DocumentDetailView } from "../components/DocumentDetailView";
 import { AuthModal } from "../components/AuthModal";
 import { ChatInterface } from "../components/ChatInterface";
+import { LiteratureMatrixView } from "../components/LiteratureMatrixView";
 import { DocumentItem, User } from "../types";
 import { api } from "../lib/api";
 import {
@@ -18,11 +19,12 @@ import {
   CheckCircle2,
   RefreshCw,
   MessageSquare,
+  Table,
 } from "lucide-react";
 
 export default function Home() {
   const [user, setUser] = useState<User | null>(null);
-  const [activeTab, setActiveTab] = useState<"catalog" | "chat">("catalog");
+  const [activeTab, setActiveTab] = useState<"catalog" | "chat" | "matrix">("catalog");
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isUploadOpen, setIsUploadOpen] = useState(false);
@@ -140,6 +142,22 @@ export default function Home() {
               onOpenUpload={() => setIsUploadOpen(true)}
             />
           </div>
+        ) : activeTab === "matrix" ? (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight flex items-center space-x-2.5">
+                  <Table className="w-6 h-6 text-cyan-400" />
+                  <span>Cross-Paper Literature Matrix</span>
+                </h1>
+                <p className="text-xs text-slate-400 mt-1">
+                  5-point scientific synthesis • Side-by-side comparison • Automated empirical contradiction detection
+                </p>
+              </div>
+            </div>
+
+            <LiteratureMatrixView documents={documents} />
+          </div>
         ) : (
           <>
             {/* Hero & Workspace Banner */}
@@ -149,7 +167,7 @@ export default function Home() {
               <div className="relative z-10 max-w-2xl space-y-3">
                 <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-cyan-950/60 border border-cyan-800/60 text-cyan-300 text-xs font-mono">
                   <ShieldCheck className="w-3.5 h-3.5" />
-                  <span>Phase 3 — Grounded AI Assistant & Hybrid Retrieval</span>
+                  <span>Phase 5 — Scientific Intelligence & Comparative Literature Analysis</span>
                 </div>
 
                 <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">

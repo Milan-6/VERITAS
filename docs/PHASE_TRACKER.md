@@ -15,7 +15,21 @@
 | **Phase 2** | Research Intelligence & Hybrid Retrieval | **COMPLETED** |
 | **Phase 3** | Grounded AI Research Assistant & Conversational Memory | **COMPLETED** |
 | **Phase 4** | Evidence Verification Engine & Claim Entailment Analysis | **COMPLETED** |
-| **Phase 5** | Scientific Intelligence & Comparative Literature Analysis | **PLANNED** (Next Phase) |
+| **Phase 5** | Scientific Intelligence & Comparative Literature Analysis | **COMPLETED** |
+| **Phase 6** | Autonomous Academic Search & Discovery Engine | **PLANNED** (Next Phase) |
+
+---
+
+## Phase 5 Detailed Milestones & Tasks
+
+| Task ID | Milestone / Deliverable | Status | Verification Detail |
+| :--- | :--- | :--- | :--- |
+| **P5-M1** | Prerequisite Verification & Audit | **COMPLETED** | Inspected Phase 4 deliverables (`verification.py`, `docs/VERITAS_PHASE_4_IMPLEMENTATION_REPORT.md`), verified baseline 35/35 tests passing. |
+| **P5-M2** | Structured Paper Synthesis Service | **COMPLETED** | Implemented `AcademicExtractionService` in `app/services/academic_extraction.py` and schemas in `app/schemas/analysis.py`. Extracts 5 core dimensions (`Problem_Statement`, `Methodology`, `Dataset_Used`, `Key_Results`, `Limitations`) using targeted hybrid chunk retrieval with page-level citations and direct source quotes. |
+| **P5-M3** | Cross-Paper Comparative Matrix Engine | **COMPLETED** | Implemented `LiteratureMatrixService` in `app/services/literature_matrix.py`. Supports 2-5 papers, multi-tenant document validation (SEC-01), dimension alignment, and empirical contradiction / methodological divergence heuristics. |
+| **P5-M4** | API & Frontend Integration | **COMPLETED** | Implemented endpoints in `app/api/v1/analysis.py` (`GET /summary/{document_id}` and `POST /matrix`). Added "Structured Synthesis" tab to `DocumentDetailView.tsx` and created `LiteratureMatrixView.tsx` with document multi-selection, comparative matrix, and contradiction alerts. Next.js production build verified. |
+| **P5-M5** | Testing and Security Verification | **COMPLETED** | Created `apps/api/tests/test_literature_analysis.py`. 38 automated tests passing (3 new Phase 5 tests). Proved single document synthesis, SEC-01 cross-tenant rejection with HTTP 403, and multi-paper matrix generation with contradiction detection. |
+| **P5-M6** | Git Management & Documentation | **COMPLETED** | Created `docs/VERITAS_PHASE_5_IMPLEMENTATION_REPORT.md` and updated `docs/PHASE_TRACKER.md`. Commits cleanly recorded locally. |
 
 ---
 

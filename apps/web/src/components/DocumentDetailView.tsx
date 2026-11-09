@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { DocumentDetail, DocumentItem } from "../types";
+import { DocumentDetail, DocumentItem, PaperSynthesis } from "../types";
 import {
   X,
   FileText,
@@ -16,6 +16,11 @@ import {
   CheckCircle2,
   AlertCircle,
   Loader2,
+  Sparkles,
+  Cpu,
+  Database,
+  Award,
+  AlertTriangle,
 } from "lucide-react";
 import { api } from "../lib/api";
 
@@ -31,8 +36,10 @@ export const DocumentDetailView: React.FC<DocumentDetailViewProps> = ({
   onRefreshList,
 }) => {
   const [detail, setDetail] = useState<DocumentDetail | null>(null);
+  const [synthesis, setSynthesis] = useState<PaperSynthesis | null>(null);
+  const [isLoadingSynthesis, setIsLoadingSynthesis] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<"metadata" | "sections" | "chunks" | "pages" | "raw">("metadata");
+  const [activeTab, setActiveTab] = useState<"synthesis" | "metadata" | "sections" | "chunks" | "pages" | "raw">("synthesis");
   const [error, setError] = useState<string | null>(null);
   const [retrying, setRetrying] = useState(false);
 
@@ -42,6 +49,18 @@ export const DocumentDetailView: React.FC<DocumentDetailViewProps> = ({
     try {
       const data = await api.getDocumentDetail(documentId);
       setDetail(data);
+
+      if (data.status === "COMPLETED") {
+        setIsLoadingSynthesis(true);
+        try {
+          const synth = await api.getPaperSynthesis(documentId);
+          setSynthesis(synth);
+        } catch (synthErr) {
+          console.error("Could not load structured synthesis:", synthErr);
+        } finally {
+          setIsLoadingSynthesis(false);
+        }
+      }
     } catch (err: any) {
       setError(err.message || "Failed to load document details");
     } finally {
@@ -139,6 +158,7 @@ export const DocumentDetailView: React.FC<DocumentDetailViewProps> = ({
       {/* Navigation Tabs */}
       <div className="flex items-center space-x-1 px-4 border-b border-[#1E293B] bg-[#080C14] overflow-x-auto">
         {[
+          { id: "synthesis", label: "Structured Synthesis", icon: Sparkles },
           { id: "metadata", label: "Overview & Metadata", icon: BookOpen },
           { id: "sections", label: `Sections (${detail.extracted_sections?.length || 0})`, icon: Layers },
           { id: "chunks", label: `Provenance (${detail.extracted_contents?.length || 0})`, icon: Hash },
@@ -165,6 +185,127 @@ export const DocumentDetailView: React.FC<DocumentDetailViewProps> = ({
 
       {/* Tab Content Body */}
       <div className="p-6 overflow-y-auto flex-1 space-y-6">
+        {/* Tab 0: Structured Synthesis (5-Point) */}
+        {activeTab === "synthesis" && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+              <div>
+                <h3 className="text-xs font-bold uppercase tracking-wider text-cyan-400 font-mono flex items-center space-x-2">
+                  <Sparkles className="w-4 h-4 text-cyan-400" />
+                  <span>5-Point Scientific Synthesis</span>
+                </h3>
+                <p className="text-[11px] text-slate-400 mt-0.5">
+                  Extracted via hybrid targeted retrieval with sentence-level provenance
+                </p>
+              </div>
+
+              {isLoadingSynthesis && (
+                <div className="flex items-center space-x-2 text-xs text-cyan-400 font-mono">
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  <span>Extracting...</span>
+                </div>
+              )}
+            </div>
+
+            {synthesis ? (
+              <div className="space-y-3.5">
+                {[
+                  {
+                    key: "problem_statement",
+                    label: "1. Problem Statement",
+                    icon: AlertCircle,
+                    color: "text-amber-400",
+                    border: "border-amber-900/40",
+                    bg: "bg-amber-950/10",
+                    point: synthesis.problem_statement,
+                  },
+                  {
+                    key: "methodology",
+                    label: "2. Methodology",
+                    icon: Cpu,
+                    color: "text-cyan-400",
+                    border: "border-cyan-900/40",
+                    bg: "bg-cyan-950/10",
+                    point: synthesis.methodology,
+                  },
+                  {
+                    key: "dataset_used",
+                    label: "3. Datasets Used",
+                    icon: Database,
+                    color: "text-sky-400",
+                    border: "border-sky-900/40",
+                    bg: "bg-sky-950/10",
+                    point: synthesis.dataset_used,
+                  },
+                  {
+                    key: "key_results",
+                    label: "4. Key Results",
+                    icon: Award,
+                    color: "text-emerald-400",
+                    border: "border-emerald-900/40",
+                    bg: "bg-emerald-950/10",
+                    point: synthesis.key_results,
+                  },
+                  {
+                    key: "limitations",
+                    label: "5. Limitations & Future Work",
+                    icon: AlertTriangle,
+                    color: "text-rose-400",
+                    border: "border-rose-900/40",
+                    bg: "bg-rose-950/10",
+                    point: synthesis.limitations,
+                  },
+                ].map((item) => (
+                  <div
+                    key={item.key}
+                    className={`p-4 rounded-xl border ${item.border} ${item.bg} space-y-2`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        <item.icon className={`w-4 h-4 ${item.color}`} />
+                        <span className={`text-xs font-bold tracking-wide ${item.color}`}>
+                          {item.label}
+                        </span>
+                      </div>
+                      {item.point.page_number && (
+                        <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-900 border border-slate-800 text-slate-300">
+                          p. {item.point.page_number}
+                          {item.point.section_title ? ` • ${item.point.section_title}` : ""}
+                        </span>
+                      )}
+                    </div>
+
+                    <p className="text-xs text-slate-200 leading-relaxed font-medium">
+                      {item.point.summary}
+                    </p>
+
+                    {item.point.source_excerpt && (
+                      <div className="pt-2 border-t border-slate-800/60">
+                        <span className="text-[10px] font-mono uppercase text-slate-500 block mb-0.5">
+                          Source Excerpt:
+                        </span>
+                        <p className="text-[11px] font-serif italic text-slate-400 bg-slate-950/60 p-2 rounded border border-slate-850">
+                          "{item.point.source_excerpt}"
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : isLoadingSynthesis ? (
+              <div className="p-8 text-center space-y-2">
+                <Loader2 className="w-6 h-6 text-cyan-400 animate-spin mx-auto" />
+                <p className="text-xs text-slate-400 font-mono">
+                  Synthesizing scientific aspects via targeted retrieval...
+                </p>
+              </div>
+            ) : (
+              <div className="p-6 text-center text-xs text-slate-400">
+                Document is not ready for synthesis. Ingestion status must be COMPLETED.
+              </div>
+            )}
+          </div>
+        )}
         {/* Tab 1: Overview & Metadata */}
         {activeTab === "metadata" && (
           <div className="space-y-6 text-sm">

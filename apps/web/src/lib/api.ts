@@ -1,4 +1,4 @@
-import { DocumentItem, DocumentDetail, DocumentProcessingJob, User, ChatSession, ChatSessionDetail, ChatMessage } from "../types";
+import { DocumentItem, DocumentDetail, DocumentProcessingJob, User, ChatSession, ChatSessionDetail, ChatMessage, PaperSynthesis, LiteratureMatrix } from "../types";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
 
@@ -225,6 +225,21 @@ class ApiClient {
     return this.request<ChatMessage>(`/chat/sessions/${sessionId}/messages`, {
       method: "POST",
       body: JSON.stringify({ content }),
+    });
+  }
+
+  // Phase 5: Scientific Intelligence & Literature Analysis
+  async getPaperSynthesis(documentId: string): Promise<PaperSynthesis> {
+    return this.request<PaperSynthesis>(`/analysis/summary/${documentId}`);
+  }
+
+  async generateLiteratureMatrix(documentIds: string[], topicQuery?: string): Promise<LiteratureMatrix> {
+    return this.request<LiteratureMatrix>("/analysis/matrix", {
+      method: "POST",
+      body: JSON.stringify({
+        document_ids: documentIds,
+        topic_query: topicQuery || null,
+      }),
     });
   }
 }
