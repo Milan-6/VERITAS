@@ -22,6 +22,21 @@
 | **Phase 10** | Learning & Research Productivity (Flashcards, Quizzes & Anki) | **COMPLETED** |
 | **Phase 11** | Collaboration, Export & Integrations | **COMPLETED** |
 | **Phase 12** | Advanced Integrations (Zotero, Webhooks & Encryption) | **COMPLETED** |
+| **Phase 13** | Platform Analytics & Telemetry (Cost, Rate Limiting & Admin Dashboard) | **COMPLETED** |
+
+---
+
+## Phase 13 Detailed Milestones & Tasks
+
+| Task ID | Milestone / Deliverable | Status | Verification Detail |
+| :--- | :--- | :--- | :--- |
+| **P13-M1** | Prerequisite Verification & Baseline Audit | **COMPLETED** | Inspected Phase 12 implementation report, verified all 65 existing tests passing in 5.34s, installed `redis` client. |
+| **P13-M2** | Telemetry Database Schemas & Migrations | **COMPLETED** | Created `ApiRequestLog` and `LlmUsageLog` in `app/models/telemetry.py` with multi-tenant time-series indexes on `timestamp` and `(workspace_id, timestamp)`. Applied Alembic migration `a4dda06fbc05`. |
+| **P13-M3** | LLM Token Tracking & Cost Calculation | **COMPLETED** | Implemented `calculate_llm_cost` and asynchronous `log_llm_usage` in `app/services/telemetry.py`. Added model pricing table (Gemini 2.0 Flash at $0.075/$0.30 per 1M, Gemini 1.5 Pro at $1.25/$5.00 per 1M). Instrumented LLM providers. |
+| **P13-M4** | API Rate Limiting & Request Profiling Middleware | **COMPLETED** | Implemented `SlidingWindowRateLimiter` in `app/core/rate_limiter.py` using Redis sorted sets with thread-safe in-memory fallback. Built `RateLimitAndTelemetryMiddleware` in `app/middleware/telemetry.py` enforcing sliding window limits, HTTP 429 rejections, `X-RateLimit-*` headers, latency measurement (`X-Response-Time-Ms`), and asynchronous logging. |
+| **P13-M5** | Analytics API & Admin Dashboard UI | **COMPLETED** | Implemented `GET /api/v1/analytics/workspace/{id}/usage` and `GET /api/v1/analytics/workspace/{id}/activity` in `app/api/v1/analytics.py` restricted to `OWNER` role. Created "Analytics & Usage" tab in `WorkspaceSettingsModal.tsx` showing token counters, estimated costs, request metrics, feature breakdowns, and live activity log. Next.js production build verified clean (0 errors). |
+| **P13-M6** | Testing & Security Verification | **COMPLETED** | Authored `apps/api/tests/test_platform_analytics.py`. Verified sliding window rate limiting, middleware headers, cost formulas, telemetry logging, and strict RBAC authorization (403 for `EDITOR` and `VIEWER`, 200 for `OWNER`). 71/71 automated tests passing platform-wide in 5.95s. |
+| **P13-M7** | Git Management & Documentation | **COMPLETED** | Authored `docs/VERITAS_PHASE_13_IMPLEMENTATION_REPORT.md` and updated `docs/PHASE_TRACKER.md`. Local git commits recorded without pushing to remote repository. |
 
 ---
 

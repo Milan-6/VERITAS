@@ -152,6 +152,25 @@ class GeminiLLMProvider(BaseLLMProvider):
             return settings.STRICT_ABSTENTION_MESSAGE
 
         answer = content_parts[0].get("text", "").strip()
+
+        # Telemetry: Extract and log token usage from Gemini API response
+        try:
+            from app.services.telemetry import telemetry_service
+            usage = data.get("usageMetadata", {})
+            p_tokens = usage.get("promptTokenCount", max(1, len(user_content) // 4))
+            c_tokens = usage.get("candidatesTokenCount", max(1, len(answer) // 4))
+            ws_id = getattr(context_chunks[0], "workspace_id", None) if context_chunks else None
+
+            telemetry_service.log_llm_usage(
+                model_name=self.model,
+                prompt_tokens=p_tokens,
+                completion_tokens=c_tokens,
+                workspace_id=ws_id,
+                feature_context="chat",
+            )
+        except Exception as tele_err:
+            logger.warning(f"Telemetry logging non-fatal warning: {tele_err}")
+
         return answer or settings.STRICT_ABSTENTION_MESSAGE
 
 
@@ -202,7 +221,26 @@ class DeterministicChatProvider(BaseLLMProvider):
             s_clean = sentence.rstrip(".")
             response_parts.append(f"{s_clean} {citation}.")
 
-        return " ".join(response_parts)
+        answer = " ".join(response_parts)
+
+        # Telemetry: Log simulated tokens for deterministic provider
+        try:
+            from app.services.telemetry import telemetry_service
+            p_tokens = max(1, len(query) // 4 + sum(len(c.content_text) // 4 for c in context_chunks))
+            c_tokens = max(1, len(answer) // 4)
+            ws_id = getattr(context_chunks[0], "workspace_id", None) if context_chunks else None
+
+            telemetry_service.log_llm_usage(
+                model_name="deterministic-mock",
+                prompt_tokens=p_tokens,
+                completion_tokens=c_tokens,
+                workspace_id=ws_id,
+                feature_context="chat",
+            )
+        except Exception as tele_err:
+            logger.warning(f"Deterministic provider telemetry non-fatal warning: {tele_err}")
+
+        return answer
 
 
 def get_llm_provider() -> BaseLLMProvider:

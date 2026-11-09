@@ -17,6 +17,7 @@ from app.models.chat import ChatSession, ChatMessage
 from app.models.graph import GraphNode, GraphEdge
 from app.models.learning import FlashcardDeck, Flashcard, Quiz
 from app.models.integration import IntegrationCredential, WebhookSubscription
+from app.models.telemetry import ApiRequestLog, LlmUsageLog
 
 __all__ = [
     "Base",
@@ -41,6 +42,8 @@ __all__ = [
     "Quiz",
     "IntegrationCredential",
     "WebhookSubscription",
+    "ApiRequestLog",
+    "LlmUsageLog",
     "DocumentStatus",
     "JobStatus",
     "ProcessingStage",

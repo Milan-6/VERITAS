@@ -20,6 +20,12 @@ import {
   Check,
   ExternalLink,
   Lock,
+  BarChart3,
+  Activity,
+  Cpu,
+  Clock,
+  Coins,
+  Gauge,
 } from "lucide-react";
 import { api } from "../lib/api";
 import {
@@ -27,6 +33,8 @@ import {
   WorkspaceDetail,
   IntegrationStatus,
   WebhookSubscriptionItem,
+  WorkspaceUsageSummary,
+  WorkspaceActivity,
 } from "../types";
 
 interface WorkspaceSettingsModalProps {
@@ -44,7 +52,7 @@ export const WorkspaceSettingsModal: React.FC<WorkspaceSettingsModalProps> = ({
   onSelectWorkspace,
   onWorkspacesChanged,
 }) => {
-  const [activeTab, setActiveTab] = useState<"members" | "integrations">("members");
+  const [activeTab, setActiveTab] = useState<"members" | "integrations" | "analytics">("members");
   const [workspaces, setWorkspaces] = useState<WorkspaceItem[]>([]);
   const [activeDetail, setActiveDetail] = useState<WorkspaceDetail | null>(null);
   const [loading, setLoading] = useState(false);
@@ -73,10 +81,33 @@ export const WorkspaceSettingsModal: React.FC<WorkspaceSettingsModalProps> = ({
   const [creatingWebhook, setCreatingWebhook] = useState(false);
   const [copiedKeyId, setCopiedKeyId] = useState<string | null>(null);
 
+  // Analytics state (Phase 13)
+  const [usageSummary, setUsageSummary] = useState<WorkspaceUsageSummary | null>(null);
+  const [activityData, setActivityData] = useState<WorkspaceActivity | null>(null);
+  const [analyticsLoading, setAnalyticsLoading] = useState(false);
+  const [analyticsError, setAnalyticsError] = useState<string | null>(null);
+
   // Status feedback
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  const fetchAnalytics = async (wsId: string) => {
+    try {
+      setAnalyticsLoading(true);
+      setAnalyticsError(null);
+      const [usage, activity] = await Promise.all([
+        api.getWorkspaceUsage(wsId),
+        api.getWorkspaceActivity(wsId, 50),
+      ]);
+      setUsageSummary(usage);
+      setActivityData(activity);
+    } catch (err: any) {
+      setAnalyticsError(err?.message || "Failed to load workspace analytics");
+    } finally {
+      setAnalyticsLoading(false);
+    }
+  };
 
   const fetchIntegrationsAndWebhooks = async (wsId: string) => {
     try {
@@ -107,7 +138,10 @@ export const WorkspaceSettingsModal: React.FC<WorkspaceSettingsModalProps> = ({
       if (targetId) {
         const detail = await api.getWorkspace(targetId);
         setActiveDetail(detail);
-        await fetchIntegrationsAndWebhooks(targetId);
+        await Promise.all([
+          fetchIntegrationsAndWebhooks(targetId),
+          detail.role === "OWNER" ? fetchAnalytics(targetId) : Promise.resolve(),
+        ]);
       }
     } catch (err: any) {
       setError(err?.message || "Failed to load workspaces");
@@ -124,6 +158,12 @@ export const WorkspaceSettingsModal: React.FC<WorkspaceSettingsModalProps> = ({
     }
   }, [isOpen, activeWorkspaceId]);
 
+  useEffect(() => {
+    if (isOpen && activeTab === "analytics" && activeDetail && activeDetail.role === "OWNER") {
+      fetchAnalytics(activeDetail.id);
+    }
+  }, [activeTab, activeDetail?.id]);
+
   const handleSelectWorkspaceTab = async (wsId: string) => {
     try {
       setLoading(true);
@@ -131,7 +171,10 @@ export const WorkspaceSettingsModal: React.FC<WorkspaceSettingsModalProps> = ({
       const detail = await api.getWorkspace(wsId);
       setActiveDetail(detail);
       onSelectWorkspace(wsId);
-      await fetchIntegrationsAndWebhooks(wsId);
+      await Promise.all([
+        fetchIntegrationsAndWebhooks(wsId),
+        detail.role === "OWNER" ? fetchAnalytics(wsId) : Promise.resolve(),
+      ]);
     } catch (err: any) {
       setError(err?.message || "Failed to switch workspace");
     } finally {
@@ -384,7 +427,18 @@ export const WorkspaceSettingsModal: React.FC<WorkspaceSettingsModalProps> = ({
               }`}
             >
               <Webhook className="w-3.5 h-3.5" />
-              <span>Integrations & Webhooks (Phase 12)</span>
+              <span>Integrations & Webhooks</span>
+            </button>
+            <button
+              onClick={() => setActiveTab("analytics")}
+              className={`pb-2.5 text-xs font-semibold flex items-center space-x-1.5 border-b-2 transition-colors ${
+                activeTab === "analytics"
+                  ? "border-cyan-400 text-cyan-300"
+                  : "border-transparent text-slate-400 hover:text-slate-200"
+              }`}
+            >
+              <BarChart3 className="w-3.5 h-3.5" />
+              <span>Analytics & Usage (Phase 13)</span>
             </button>
           </div>
 
@@ -792,6 +846,217 @@ export const WorkspaceSettingsModal: React.FC<WorkspaceSettingsModalProps> = ({
                   </div>
                 </form>
               </div>
+            </div>
+          )}
+
+          {/* TAB 3: ANALYTICS & USAGE (Phase 13) */}
+          {activeTab === "analytics" && activeDetail && (
+            <div className="space-y-5">
+              {activeDetail.role !== "OWNER" ? (
+                <div className="p-4 rounded-xl bg-amber-950/40 border border-amber-800/60 flex items-start space-x-3 text-xs text-amber-200">
+                  <Lock className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+                  <div>
+                    <h4 className="font-semibold text-amber-300">Admin Analytics Restricted</h4>
+                    <p className="text-amber-200/80 mt-1">
+                      Platform analytics, LLM token expenditure, and API activity metrics are exclusively available to workspace Owners.
+                      Your current role is <span className="font-mono uppercase font-bold text-amber-300">[{activeDetail.role}]</span>.
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  {/* Header Bar */}
+                  <div className="flex items-center justify-between bg-slate-900/60 border border-slate-800 p-3.5 rounded-xl">
+                    <div>
+                      <h3 className="text-xs font-semibold text-white uppercase tracking-wider flex items-center space-x-2">
+                        <BarChart3 className="w-4 h-4 text-cyan-400" />
+                        <span>Platform Telemetry & Consumption</span>
+                      </h3>
+                      <p className="text-[11px] text-slate-400 mt-0.5">
+                        Real-time token expenditures, request volume, and API latency for {activeDetail.name}.
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => fetchAnalytics(activeDetail.id)}
+                      disabled={analyticsLoading}
+                      className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium border border-slate-700 transition-colors disabled:opacity-50"
+                    >
+                      <RefreshCw className={`w-3.5 h-3.5 ${analyticsLoading ? "animate-spin text-cyan-400" : ""}`} />
+                      <span>Refresh</span>
+                    </button>
+                  </div>
+
+                  {analyticsError && (
+                    <div className="p-3 rounded-lg bg-rose-950/40 border border-rose-800/60 text-xs text-rose-300 flex items-center space-x-2">
+                      <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+                      <span>{analyticsError}</span>
+                    </div>
+                  )}
+
+                  {/* 4 KPI Metric Cards */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <div className="p-3.5 rounded-xl bg-slate-900/60 border border-slate-800">
+                      <div className="flex items-center justify-between text-slate-400 mb-1">
+                        <span className="text-[11px] uppercase tracking-wider font-semibold">Total Tokens</span>
+                        <Cpu className="w-4 h-4 text-cyan-400" />
+                      </div>
+                      <div className="text-lg font-bold text-white font-mono">
+                        {(usageSummary?.llm_usage.total_tokens || 0).toLocaleString()}
+                      </div>
+                      <div className="text-[10px] text-slate-400 mt-1 truncate">
+                        P: {(usageSummary?.llm_usage.prompt_tokens || 0).toLocaleString()} | C: {(usageSummary?.llm_usage.completion_tokens || 0).toLocaleString()}
+                      </div>
+                    </div>
+
+                    <div className="p-3.5 rounded-xl bg-slate-900/60 border border-slate-800">
+                      <div className="flex items-center justify-between text-slate-400 mb-1">
+                        <span className="text-[11px] uppercase tracking-wider font-semibold">Estimated Cost</span>
+                        <Coins className="w-4 h-4 text-emerald-400" />
+                      </div>
+                      <div className="text-lg font-bold text-emerald-400 font-mono">
+                        ${(usageSummary?.llm_usage.estimated_cost_usd || 0).toFixed(4)}
+                      </div>
+                      <div className="text-[10px] text-slate-400 mt-1">
+                        {usageSummary?.llm_usage.total_llm_invocations || 0} LLM calls
+                      </div>
+                    </div>
+
+                    <div className="p-3.5 rounded-xl bg-slate-900/60 border border-slate-800">
+                      <div className="flex items-center justify-between text-slate-400 mb-1">
+                        <span className="text-[11px] uppercase tracking-wider font-semibold">API Invocations</span>
+                        <Activity className="w-4 h-4 text-blue-400" />
+                      </div>
+                      <div className="text-lg font-bold text-white font-mono">
+                        {activityData?.total_requests ?? usageSummary?.total_api_requests ?? 0}
+                      </div>
+                      <div className="text-[10px] text-slate-400 mt-1">
+                        {usageSummary?.total_documents || 0} indexed docs
+                      </div>
+                    </div>
+
+                    <div className="p-3.5 rounded-xl bg-slate-900/60 border border-slate-800">
+                      <div className="flex items-center justify-between text-slate-400 mb-1">
+                        <span className="text-[11px] uppercase tracking-wider font-semibold">Avg Latency</span>
+                        <Gauge className="w-4 h-4 text-purple-400" />
+                      </div>
+                      <div className="text-lg font-bold text-white font-mono">
+                        {(activityData?.average_response_time_ms || 0).toFixed(1)} <span className="text-xs text-slate-400 font-normal">ms</span>
+                      </div>
+                      <div className="text-[10px] text-slate-400 mt-1">
+                        Error Rate: <span className={activityData?.error_rate_percentage ? "text-rose-400 font-semibold" : "text-emerald-400"}>{activityData?.error_rate_percentage || 0}%</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Feature Breakdown Table */}
+                  <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-4">
+                    <h4 className="text-xs font-semibold text-slate-300 uppercase tracking-wider mb-3 flex items-center space-x-2">
+                      <Cpu className="w-3.5 h-3.5 text-cyan-400" />
+                      <span>LLM Consumption by Feature</span>
+                    </h4>
+                    {usageSummary && Object.keys(usageSummary.llm_usage.breakdown_by_feature).length > 0 ? (
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                        {Object.entries(usageSummary.llm_usage.breakdown_by_feature).map(([feature, data]) => (
+                          <div
+                            key={feature}
+                            className="p-3 rounded-lg bg-slate-950/70 border border-slate-800 text-xs"
+                          >
+                            <div className="flex items-center justify-between mb-1.5">
+                              <span className="font-semibold text-slate-200 capitalize">{feature}</span>
+                              <span className="text-[10px] font-mono text-emerald-400">${data.cost_usd.toFixed(4)}</span>
+                            </div>
+                            <div className="flex items-center justify-between text-[11px] text-slate-400">
+                              <span>Tokens: {data.tokens.toLocaleString()}</span>
+                              <span>Calls: {data.calls}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-xs text-slate-500 italic py-2">
+                        No LLM requests have been recorded for this workspace yet. Invocations from Chat, Literature Matrix, and Study tools will register here automatically.
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Recent Activity Table */}
+                  <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <h4 className="text-xs font-semibold text-slate-300 uppercase tracking-wider flex items-center space-x-2">
+                        <Clock className="w-3.5 h-3.5 text-blue-400" />
+                        <span>Recent API Requests & Latency</span>
+                      </h4>
+                      <span className="text-[10px] text-slate-500 font-mono">Latest {activityData?.recent_activity.length || 0} events</span>
+                    </div>
+
+                    {activityData && activityData.recent_activity.length > 0 ? (
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-left text-xs border-collapse">
+                          <thead>
+                            <tr className="border-b border-slate-800 text-[10px] uppercase text-slate-500 tracking-wider">
+                              <th className="py-2 px-2.5 font-semibold">Method</th>
+                              <th className="py-2 px-2.5 font-semibold">Endpoint</th>
+                              <th className="py-2 px-2.5 font-semibold">Status</th>
+                              <th className="py-2 px-2.5 font-semibold">Latency</th>
+                              <th className="py-2 px-2.5 font-semibold">Timestamp</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-800/60 font-mono text-[11px]">
+                            {activityData.recent_activity.slice(0, 15).map((log) => {
+                              const isErr = log.status_code >= 400;
+                              return (
+                                <tr key={log.id} className="hover:bg-slate-800/30 transition-colors">
+                                  <td className="py-2 px-2.5">
+                                    <span
+                                      className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                                        log.method === "GET"
+                                          ? "bg-blue-950 text-blue-400 border border-blue-800/60"
+                                          : log.method === "POST"
+                                          ? "bg-emerald-950 text-emerald-400 border border-emerald-800/60"
+                                          : log.method === "DELETE"
+                                          ? "bg-rose-950 text-rose-400 border border-rose-800/60"
+                                          : "bg-slate-800 text-slate-300"
+                                      }`}
+                                    >
+                                      {log.method}
+                                    </span>
+                                  </td>
+                                  <td className="py-2 px-2.5 text-slate-300 truncate max-w-[200px]" title={log.endpoint}>
+                                    {log.endpoint}
+                                  </td>
+                                  <td className="py-2 px-2.5">
+                                    <span
+                                      className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${
+                                        isErr
+                                          ? "bg-rose-950 text-rose-300 border border-rose-800"
+                                          : "bg-emerald-950 text-emerald-300 border border-emerald-800"
+                                      }`}
+                                    >
+                                      {log.status_code}
+                                    </span>
+                                  </td>
+                                  <td className="py-2 px-2.5">
+                                    <span className={log.response_time_ms > 500 ? "text-amber-400" : "text-cyan-400"}>
+                                      {log.response_time_ms.toFixed(1)} ms
+                                    </span>
+                                  </td>
+                                  <td className="py-2 px-2.5 text-slate-500 text-[10px]">
+                                    {new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    ) : (
+                      <p className="text-xs text-slate-500 italic py-2">
+                        No request telemetry logged yet. Endpoints invoked will appear here in real-time.
+                      </p>
+                    )}
+                  </div>
+                </>
+              )}
             </div>
           )}
         </div>

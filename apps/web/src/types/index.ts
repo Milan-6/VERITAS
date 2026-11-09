@@ -428,5 +428,45 @@ export interface ZoteroSyncSummary {
   skipped_or_existing: number;
 }
 
+export interface LlmFeatureUsage {
+  tokens: number;
+  cost_usd: number;
+  calls: number;
+}
+
+export interface LlmUsageSummary {
+  prompt_tokens: number;
+  completion_tokens: number;
+  total_tokens: number;
+  estimated_cost_usd: number;
+  total_llm_invocations: number;
+  breakdown_by_feature: Record<string, LlmFeatureUsage>;
+}
+
+export interface WorkspaceUsageSummary {
+  workspace_id: string;
+  total_documents: number;
+  total_api_requests: number;
+  llm_usage: LlmUsageSummary;
+}
+
+export interface ActivityRecord {
+  id: string;
+  endpoint: string;
+  method: string;
+  status_code: number;
+  response_time_ms: number;
+  timestamp: string;
+}
+
+export interface WorkspaceActivity {
+  workspace_id: string;
+  total_requests: number;
+  average_response_time_ms: number;
+  error_rate_percentage: number;
+  recent_activity: ActivityRecord[];
+}
+
+
 
 

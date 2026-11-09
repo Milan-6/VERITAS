@@ -52,6 +52,14 @@ TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engin
 # Wire job_manager to use test DB session factory
 job_manager.session_factory = TestingSessionLocal
 
+# Wire telemetry_service to use test DB session factory (Phase 13)
+from app.services.telemetry import telemetry_service
+telemetry_service.session_factory = TestingSessionLocal
+
+# In tests, avoid offline Redis socket connection attempts
+from app.core.rate_limiter import rate_limiter
+rate_limiter._redis_failed = True
+
 # 2. Strict fast in-memory Qdrant Client (timeout=5.0)
 test_qdrant_client = QdrantClient(location=":memory:", timeout=5.0)
 vector_store.client = test_qdrant_client

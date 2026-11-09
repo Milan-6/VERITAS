@@ -22,6 +22,8 @@ import {
   IntegrationStatus,
   WebhookSubscriptionItem,
   ZoteroSyncSummary,
+  WorkspaceUsageSummary,
+  WorkspaceActivity,
 } from "../types";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
@@ -536,6 +538,15 @@ class ApiClient {
     return this.request<{ message: string }>(`/webhooks/${webhookId}`, {
       method: "DELETE",
     });
+  }
+
+  // Phase 13: Platform Analytics & Telemetry
+  async getWorkspaceUsage(workspaceId: string): Promise<WorkspaceUsageSummary> {
+    return this.request<WorkspaceUsageSummary>(`/analytics/workspace/${encodeURIComponent(workspaceId)}/usage`);
+  }
+
+  async getWorkspaceActivity(workspaceId: string, limit: number = 50): Promise<WorkspaceActivity> {
+    return this.request<WorkspaceActivity>(`/analytics/workspace/${encodeURIComponent(workspaceId)}/activity?limit=${limit}`);
   }
 }
 

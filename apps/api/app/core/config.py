@@ -37,6 +37,26 @@ class Settings(BaseModel):
     CELERY_TASK_ALWAYS_EAGER: bool = Field(
         default_factory=lambda: os.getenv("CELERY_TASK_ALWAYS_EAGER", "false").lower() in ("true", "1", "yes")
     )
+    REDIS_URL: str = Field(
+        default_factory=lambda: os.getenv("REDIS_URL", "redis://localhost:6379/0")
+    )
+
+    # Rate Limiting & Telemetry (Phase 13)
+    RATE_LIMIT_ENABLED: bool = Field(
+        default_factory=lambda: os.getenv("RATE_LIMIT_ENABLED", "true").lower() in ("true", "1", "yes")
+    )
+    RATE_LIMIT_DEFAULT_REQUESTS: int = Field(
+        default_factory=lambda: int(os.getenv("RATE_LIMIT_DEFAULT_REQUESTS", "120"))
+    )
+    RATE_LIMIT_DEFAULT_WINDOW: int = Field(
+        default_factory=lambda: int(os.getenv("RATE_LIMIT_DEFAULT_WINDOW", "60"))
+    )
+    RATE_LIMIT_HEAVY_REQUESTS: int = Field(
+        default_factory=lambda: int(os.getenv("RATE_LIMIT_HEAVY_REQUESTS", "20"))
+    )
+    RATE_LIMIT_HEAVY_WINDOW: int = Field(
+        default_factory=lambda: int(os.getenv("RATE_LIMIT_HEAVY_WINDOW", "60"))
+    )
 
     # Vector Database (Qdrant)
     QDRANT_HOST: str | None = Field(default_factory=lambda: os.getenv("QDRANT_HOST", None))
