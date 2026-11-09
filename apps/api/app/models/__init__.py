@@ -14,6 +14,7 @@ from app.models.document import (
 )
 from app.models.chunk import SemanticChunk
 from app.models.chat import ChatSession, ChatMessage
+from app.models.graph import GraphNode, GraphEdge
 
 __all__ = [
     "Base",
@@ -29,6 +30,8 @@ __all__ = [
     "SemanticChunk",
     "ChatSession",
     "ChatMessage",
+    "GraphNode",
+    "GraphEdge",
     "DocumentStatus",
     "JobStatus",
     "ProcessingStage",

@@ -1,4 +1,4 @@
-import { DocumentItem, DocumentDetail, DocumentProcessingJob, User, ChatSession, ChatSessionDetail, ChatMessage, PaperSynthesis, LiteratureMatrix, DiscoverySearchResponse, DirectIngestResponse, CitationNetworkResponse } from "../types";
+import { DocumentItem, DocumentDetail, DocumentProcessingJob, User, ChatSession, ChatSessionDetail, ChatMessage, PaperSynthesis, LiteratureMatrix, DiscoverySearchResponse, DirectIngestResponse, CitationNetworkResponse, WorkspaceGraph } from "../types";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
 
@@ -278,6 +278,22 @@ class ApiClient {
 
   async getCitationNetwork(documentId: string): Promise<CitationNetworkResponse> {
     return this.request<CitationNetworkResponse>(`/discovery/citations/${documentId}`);
+  }
+
+  // Phase 8: Research Knowledge Graph
+  async getWorkspaceKnowledgeGraph(): Promise<WorkspaceGraph> {
+    return this.request<WorkspaceGraph>("/graph/workspace");
+  }
+
+  async extractDocumentGraph(documentId: string): Promise<{
+    status: string;
+    document_id: string;
+    nodes_extracted: number;
+    edges_extracted: number;
+  }> {
+    return this.request(`/graph/extract/${documentId}`, {
+      method: "POST",
+    });
   }
 }
 

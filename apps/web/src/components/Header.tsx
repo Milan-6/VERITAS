@@ -2,12 +2,12 @@
 
 import React from "react";
 import { User } from "../types";
-import { ShieldCheck, LogIn, LogOut, User as UserIcon, Plus, Globe } from "lucide-react";
+import { ShieldCheck, LogIn, LogOut, User as UserIcon, Plus, Globe, Network } from "lucide-react";
 
 interface HeaderProps {
   user: User | null;
-  activeTab: "catalog" | "chat" | "matrix" | "discovery";
-  onTabChange: (tab: "catalog" | "chat" | "matrix" | "discovery") => void;
+  activeTab: "catalog" | "chat" | "matrix" | "discovery" | "graph";
+  onTabChange: (tab: "catalog" | "chat" | "matrix" | "discovery" | "graph") => void;
   onOpenAuth: () => void;
   onOpenUpload: () => void;
   onLogout: () => void;
@@ -36,7 +36,7 @@ export const Header: React.FC<HeaderProps> = ({
                   VERITAS
                 </span>
                 <span className="text-[10px] font-mono tracking-widest bg-cyan-950/80 text-cyan-400 border border-cyan-800/60 px-1.5 py-0.5 rounded uppercase">
-                  Phase 6
+                  Phase 8
                 </span>
               </div>
               <p className="text-[11px] text-slate-400 tracking-tight font-medium hidden sm:block">
@@ -77,6 +77,17 @@ export const Header: React.FC<HeaderProps> = ({
               }`}
             >
               <span>Literature Matrix</span>
+            </button>
+            <button
+              onClick={() => onTabChange("graph")}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center space-x-1.5 ${
+                activeTab === "graph"
+                  ? "bg-cyan-950/80 border border-cyan-800/60 text-cyan-300 font-semibold"
+                  : "text-slate-400 hover:text-slate-200 hover:bg-slate-900"
+              }`}
+            >
+              <Network className="w-3.5 h-3.5 text-cyan-400" />
+              <span>Knowledge Graph</span>
             </button>
             <button
               onClick={() => onTabChange("chat")}

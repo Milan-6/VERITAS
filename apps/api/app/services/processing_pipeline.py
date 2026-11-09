@@ -226,6 +226,18 @@ class DocumentProcessingPipeline:
             doc.status = DocumentStatus.COMPLETED.value
             doc.error_message = None
             db.commit()
+
+            # Trigger Knowledge Graph Entity Extraction
+            try:
+                from app.services.knowledge_graph import knowledge_graph_service
+                knowledge_graph_service.extract_entities_for_document(
+                    document_id=doc.id,
+                    tenant_id=tenant_id,
+                    db=db,
+                )
+            except Exception as kg_err:
+                logger.warning(f"Knowledge graph extraction non-fatal warning for doc {doc.id}: {str(kg_err)}")
+
             return True
 
         except Exception as e:

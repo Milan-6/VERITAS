@@ -265,3 +265,31 @@ export interface CitationNetworkResponse {
   cited_by: ExternalPaperMetadata[];
   top_related: ExternalPaperMetadata[];
 }
+
+export interface GraphNode {
+  id: string;
+  tenant_id: string;
+  type: "Paper" | "Author" | "Dataset" | "Algorithm" | "Metric" | "Concept" | string;
+  label: string;
+  description?: string | null;
+  document_id?: string | null;
+}
+
+export interface GraphEdge {
+  id: string;
+  tenant_id: string;
+  source_node_id: string;
+  target_node_id: string;
+  relationship_type: string;
+  provenance_chunk_id?: string | null;
+  source_excerpt?: string | null;
+  document_id?: string | null;
+}
+
+export interface WorkspaceGraph {
+  tenant_id: string;
+  total_nodes: number;
+  total_edges: number;
+  nodes: GraphNode[];
+  edges: GraphEdge[];
+}

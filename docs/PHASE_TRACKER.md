@@ -17,7 +17,22 @@
 | **Phase 4** | Evidence Verification Engine & Claim Entailment Analysis | **COMPLETED** |
 | **Phase 5** | Scientific Intelligence & Comparative Literature Analysis | **COMPLETED** |
 | **Phase 6** | Academic Research Discovery & Citation Networks | **COMPLETED** |
-| **Phase 7** | Scientific Knowledge Graph & Entity Extraction | **PLANNED** (Next Phase) |
+| **Phase 8** | Research Knowledge Graph & Relational Entities | **COMPLETED** |
+| **Phase 9** | Autonomous AI Research Agents & Multi-Paper Synthesis | **PLANNED** (Next Phase) |
+
+---
+
+## Phase 8 Detailed Milestones & Tasks
+
+| Task ID | Milestone / Deliverable | Status | Verification Detail |
+| :--- | :--- | :--- | :--- |
+| **P8-M1** | Prerequisite Verification & Audit | **COMPLETED** | Inspected Phase 6 discovery routes and report, verified baseline 44/44 tests passing. |
+| **P8-M2** | Graph Database Schemas & Migrations | **COMPLETED** | Created `GraphNode` and `GraphEdge` models in `app/models/graph.py` with unique constraints and foreign keys to `documents` and `semantic_chunks`. Applied Alembic migration `b98100ae8b84`. |
+| **P8-M3** | Scientific Entity Extraction (NER) | **COMPLETED** | Implemented `KnowledgeGraphService` in `app/services/knowledge_graph.py` with dual-mode Gemini JSON schema and deterministic fallback. Integrated automatic extraction hook upon document indexing completion in `ProcessingPipeline`. |
+| **P8-M4** | Graph Traversal API | **COMPLETED** | Built `GET /api/v1/graph/workspace` and `POST /api/v1/graph/extract/{document_id}` in `app/api/v1/graph.py` with strict tenant isolation and provenance mapping. |
+| **P8-M5** | Frontend Graph Visualization | **COMPLETED** | Built interactive `KnowledgeGraphView.tsx` using `vis-network` ForceAtlas2 physics solver. Features type color coding, search bar, entity type toggles, and side drawer for entity inspection and verified grounding excerpts. Next.js production build verified. |
+| **P8-M6** | Testing and Security Verification | **COMPLETED** | Created `apps/api/tests/test_knowledge_graph.py`. 48 automated tests passing (4 new Phase 8 tests). Proved entity/relation extraction, strict multi-tenant isolation, UPSERT deduplication, and cross-tenant extraction rejection. |
+| **P8-M7** | Git Management & Documentation | **COMPLETED** | Authored `docs/VERITAS_PHASE_8_IMPLEMENTATION_REPORT.md` and updated `docs/PHASE_TRACKER.md`. Local git commits recorded. |
 
 ---
 
