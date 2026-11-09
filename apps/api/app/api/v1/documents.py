@@ -24,6 +24,7 @@ from app.schemas.document import (
     BatchUploadResponse,
 )
 from app.services.storage import storage_service
+from app.services.vector_store import vector_store
 from app.workers.queue import job_manager
 
 router = APIRouter(prefix="/documents", tags=["Documents"])
@@ -254,7 +255,8 @@ def delete_document(
     db.delete(doc)
     db.commit()
 
-    # Safely clean up storage file
+    # Safely clean up vectors in Qdrant and storage file
+    vector_store.delete_document_vectors(document_id)
     storage_service.delete_file(storage_path)
     return None
 

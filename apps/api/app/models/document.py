@@ -31,6 +31,8 @@ class ProcessingStage(str, Enum):
     SECTION_RECOGNITION = "SECTION_RECOGNITION"
     PAGE_MAPPING = "PAGE_MAPPING"
     PERSISTENCE = "PERSISTENCE"
+    CHUNKING = "CHUNKING"
+    VECTOR_INDEXING = "VECTOR_INDEXING"
     COMPLETED = "COMPLETED"
 
 
@@ -58,6 +60,7 @@ class Document(Base):
     extracted_pages = relationship("ExtractedPage", back_populates="document", cascade="all, delete-orphan", order_by="ExtractedPage.page_number")
     extracted_sections = relationship("ExtractedSection", back_populates="document", cascade="all, delete-orphan", order_by="ExtractedSection.order_index")
     extracted_contents = relationship("ExtractedContent", back_populates="document", cascade="all, delete-orphan", order_by="ExtractedContent.order_index")
+    semantic_chunks = relationship("SemanticChunk", back_populates="document", cascade="all, delete-orphan", order_by="SemanticChunk.chunk_index")
 
 
 class DocumentMetadata(Base):

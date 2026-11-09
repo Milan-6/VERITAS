@@ -12,6 +12,7 @@ from app.models.document import (
     JobStatus,
     ProcessingStage,
 )
+from app.models.chunk import SemanticChunk
 
 __all__ = [
     "Base",
@@ -24,6 +25,7 @@ __all__ = [
     "ExtractedPage",
     "ExtractedSection",
     "ExtractedContent",
+    "SemanticChunk",
     "DocumentStatus",
     "JobStatus",
     "ProcessingStage",

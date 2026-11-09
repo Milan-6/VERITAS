@@ -5,13 +5,14 @@ from app.core.config import settings
 from app.core.database import Base, engine
 from app.api.v1.auth import router as auth_router
 from app.api.v1.documents import router as documents_router
+from app.api.v1.retrieval import router as retrieval_router
 
 # Initialize tables
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
     title="VERITAS API",
-    description="VERITAS: Research Intelligence. Grounded in Truth. Core Ingestion & Extraction Engine.",
+    description="VERITAS: Research Intelligence. Grounded in Truth. Core Ingestion, Extraction & Hybrid Retrieval Engine.",
     version="1.0.0",
     docs_url="/docs",
     redoc_url="/redoc",
@@ -30,6 +31,7 @@ app.add_middleware(
 # Include v1 routers
 app.include_router(auth_router, prefix=settings.API_V1_PREFIX)
 app.include_router(documents_router, prefix=settings.API_V1_PREFIX)
+app.include_router(retrieval_router, prefix=settings.API_V1_PREFIX)
 
 
 @app.get("/health", tags=["Health"])
@@ -40,5 +42,5 @@ def health_check():
         "product": settings.PROJECT_NAME,
         "tagline": settings.TAGLINE,
         "version": "1.0.0",
-        "phase": "Phase 1 - Document Processing Engine",
+        "phase": "Phase 2 - Research Intelligence & Hybrid Retrieval",
     }

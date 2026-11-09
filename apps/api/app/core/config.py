@@ -32,6 +32,23 @@ class Settings(BaseModel):
     )
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24  # 24 hours
+
+    # Vector Database (Qdrant)
+    QDRANT_HOST: str | None = Field(default_factory=lambda: os.getenv("QDRANT_HOST", None))
+    QDRANT_PORT: int = Field(default_factory=lambda: int(os.getenv("QDRANT_PORT", "6333")))
+    QDRANT_URL: str | None = Field(default_factory=lambda: os.getenv("QDRANT_URL", None))
+    QDRANT_API_KEY: str | None = Field(default_factory=lambda: os.getenv("QDRANT_API_KEY", None))
+    QDRANT_COLLECTION: str = "veritas_research_chunks"
+    QDRANT_LOCAL_PATH: str = Field(
+        default_factory=lambda: os.getenv("QDRANT_LOCAL_PATH", str(BASE_DIR / "data" / "qdrant"))
+    )
+
+    # Embedding Settings
+    GEMINI_API_KEY: str = Field(
+        default_factory=lambda: os.getenv("GEMINI_API_KEY", os.getenv("GOOGLE_API_KEY", ""))
+    )
+    EMBEDDING_MODEL: str = "models/text-embedding-004"
+    EMBEDDING_DIMENSION: int = 768
     
     # CORS
     BACKEND_CORS_ORIGINS: list[str] = [

@@ -179,6 +179,22 @@ class ApiClient {
   getDownloadUrl(id: string): string {
     return `${API_BASE_URL}/documents/${id}/download`;
   }
+
+  // Phase 2: Hybrid Retrieval Endpoint
+  async searchHybrid(
+    query: string,
+    documentId?: string,
+    topK: number = 10
+  ): Promise<{ query: string; tenant_id: string; total_results: number; results: any[] }> {
+    return this.request("/retrieval/search", {
+      method: "POST",
+      body: JSON.stringify({
+        query,
+        document_id: documentId || null,
+        top_k: topK,
+      }),
+    });
+  }
 }
 
 export const api = new ApiClient();

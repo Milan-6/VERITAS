@@ -99,3 +99,23 @@ export interface DocumentDetail extends DocumentItem {
   extracted_sections: ExtractedSection[];
   extracted_contents: ExtractedContent[];
 }
+
+export interface SearchResultChunk {
+  chunk_id: string;
+  document_id: string;
+  document_title: string;
+  page_number: number;
+  section_title: string;
+  subsection?: string | null;
+  content_text: string;
+  score: number;
+  dense_score?: number | null;
+  sparse_score?: number | null;
+}
+
+export interface SearchResponse {
+  query: string;
+  tenant_id: string;
+  total_results: number;
+  results: SearchResultChunk[];
+}
