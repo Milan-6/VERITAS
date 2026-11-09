@@ -12,20 +12,19 @@
 | :--- | :--- | :--- |
 | **Phase 0** | Baseline Audit, Architecture & Threat Modeling | **COMPLETED** |
 | **Phase 1** | Foundations, Secure Ingestion & Document Processing Engine | **COMPLETED** |
-| **Phase 2+** | Hybrid Retrieval, Graph Citations, Synthesis & Verification | **PLANNED** (Strictly out of scope for Phase 1) |
+| **Phase 2** | Research Intelligence & Hybrid Retrieval | **COMPLETED** |
+| **Phase 3+** | Grounded AI Assistant, Chat Interface & Evidence Verification | **PLANNED** (Strictly out of scope for Phase 2) |
 
 ---
 
-## Phase 1 Detailed Milestones & Tasks
+## Phase 2 Detailed Milestones & Tasks
 
 | Task ID | Milestone / Deliverable | Status | Verification Detail |
 | :--- | :--- | :--- | :--- |
-| **P1-M1** | Read Before You Code & Repository Audit | **COMPLETED** | Forensic audit complete; baseline established; host tooling verified (Python 3.13, Node 24, Git 2.55); git repository initialized with strict `.gitignore`. |
-| **P1-M2** | Complete Project Rebranding | **COMPLETED** | Complete rebranding from "ScholarPulse AI" to **VERITAS** across all architecture specs, threat models, database models, API titles, and UI components. Tagline: *"Research Intelligence. Grounded in Truth."* |
-| **P1-M3** | Database and Backend Foundation | **COMPLETED** | Implemented SQLAlchemy 2.0 models (`Document`, `DocumentMetadata`, `DocumentProcessingJob`, `ExtractedPage`, `ExtractedSection`, `ExtractedContent`, `DocumentWorkspaceAssociation`, `User`, `Workspace`). Configured Alembic and applied initial migration (`c87e726d540a_initial_phase1_schema.py`). Strict multi-tenant authorization guard implemented in `core/security.py`. |
-| **P1-M4** | Secure PDF Ingestion & Storage | **COMPLETED** | Implemented `StorageService` validating file extension, MIME type, `%PDF-` magic bytes, 50MB file size limits, 0-byte rejections, and SHA-256 integrity hashing. Secure isolated UUID storage. Endpoints: `POST /upload`, `POST /upload-batch`, `GET /documents`, `GET /documents/{id}`, `DELETE /documents/{id}`, `GET /documents/{id}/download`. |
-| **P1-M5** | PDF Extraction Pipeline | **COMPLETED** | Built `PDFParserService` using PyMuPDF (fitz) with `pypdf` fallback. Layout-aware parsing extracts Title, Authors, Abstract, Keywords, DOI, Sections, Subsections, Paragraphs, Tables, Figure captions, Math expressions, and References. Deterministic page-level provenance chunking preserving bounding box coordinates (`x0`, `y0`, `x1`, `y1`). |
-| **P1-M6** | Background Processing | **COMPLETED** | Built `BackgroundJobManager` with asynchronous worker pool. Full lifecycle state tracking: `UPLOADED` → `QUEUED` → `PROCESSING` → `COMPLETED` / `FAILED`. Real-time status polling endpoint (`GET /documents/{id}/status`), retry endpoint (`POST /documents/{id}/retry`), duplicate prevention, and detailed error logging. |
-| **P1-M7** | Frontend Integration | **COMPLETED** | Next.js 14 App Router platform with deep navy/charcoal styling and cyan accents. Drag-and-drop upload modal with real-time upload progress, document catalog with live status polling, detail drawer with metadata, section hierarchy, page metrics, and provenance chunk inspector. Compiled with 0 errors (`npm run build`). |
-| **P1-M8** | Testing and Security Verification | **COMPLETED** | Automated test suite in `apps/api/tests/`: 18 tests executed and 18 PASSED (0 failures). Covers auth, upload validation, magic bytes, empty/oversized files, IDOR cross-user protection, PyMuPDF layout extraction, background job transitions, and deduplication. |
-| **P1-M9** | Git Management & Documentation | **COMPLETED** | Atomic Git commits per milestone; created comprehensive `README.md`, `.env.example`, `docker-compose.yml`, and `docs/VERITAS_PHASE_1_IMPLEMENTATION_REPORT.md`. |
+| **P2-M1** | Prerequisite Verification & Audit | **COMPLETED** | Inspected Phase 1 outputs, database schemas (`Document`, `ExtractedContent`, `ExtractedPage`), verified 18/18 Phase 1 tests pass cleanly. |
+| **P2-M2** | Section-Aware Semantic Chunking | **COMPLETED** | Implemented `SectionAwareChunker` in `app/services/chunker.py`. Sentence-boundary preserving window (800 tokens, 150 token overlap), structural breadcrumb injection (`[Document: ...] [Section: ...]`), and database model `SemanticChunk`. |
+| **P2-M3** | Vector Database Deployment & Integration | **COMPLETED** | Integrated Qdrant Python client (`qdrant-client` 1.20) with collection `veritas_research_chunks`. Dual vector configuration: Dense vectors (768 dimensions, Cosine) and Sparse vectors (BM25). Created payload indexes for `tenant_id` and `document_id`. Local embedded storage fallback when server is offline. |
+| **P2-M4** | Embedding Generation Pipeline | **COMPLETED** | Implemented modular embedding provider in `app/services/embeddings.py`. Integrated Google Gemini `models/text-embedding-004` with exponential backoff on HTTP 429 rate limits, deterministic dense embedding fallback (768d), and BM25 sparse vectorizer. Integrated into background processing pipeline. |
+| **P2-M5** | Hybrid Retrieval API | **COMPLETED** | Implemented `POST /api/v1/retrieval/search` in `app/api/v1/retrieval.py`. Executes concurrent dense semantic search and sparse BM25 keyword search with Reciprocal Rank Fusion (RRF) reranking. Enforces strict tenant isolation (`tenant_id` filter) and returns complete chunk provenance (Document Title, Page, Section, Scores). |
+| **P2-M6** | Testing and Security Verification | **COMPLETED** | 26 automated tests passing (8 new Phase 2 tests). Verified mathematical tenant isolation, semantic chunking overlap, Qdrant insertion and deletion synchronization, and rate-limit backoff handling. |
+| **P2-M7** | Git Management & Documentation | **COMPLETED** | Meaningful commits per milestone on `master` branch. Generated `docs/VERITAS_PHASE_2_IMPLEMENTATION_REPORT.md` and updated `README.md` and `docker-compose.yml`. |
