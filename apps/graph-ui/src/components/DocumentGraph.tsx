@@ -9,7 +9,6 @@ import {
   getNodeRadius,
 } from "../hooks/useClusterColor";
 import { getNodeId } from "../utils/pathfinding";
-import mockTreeRaw from "../data/mock_document_tree.json";
 
 /**
  * Creates a high-resolution 2D Canvas Text Sprite for WebGL node labels in 3D space
@@ -66,6 +65,7 @@ export const DocumentGraph: React.FC = () => {
   const containerRef = useRef<HTMLDivElement>(null);
   const fg3dRef = useRef<ForceGraph3DMethods<DocumentTreeNode, DocumentTreeLink>>();
   const fg2dRef = useRef<ForceGraph2DMethods<DocumentTreeNode, DocumentTreeLink>>();
+  const idleTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const [dimensions, setDimensions] = useState({
     width: typeof window !== "undefined" ? window.innerWidth : 1200,
@@ -73,6 +73,8 @@ export const DocumentGraph: React.FC = () => {
   });
 
   const {
+    nodes: storeNodes,
+    links: storeLinks,
     dimension,
     selectedNode,
     setSelectedNode,
@@ -82,6 +84,7 @@ export const DocumentGraph: React.FC = () => {
     isSearching,
     searchPath,
     clearSearch,
+    setIsEngineIdle,
   } = useGraphStore();
 
   // Responsive full-bleed container observer
@@ -110,10 +113,7 @@ export const DocumentGraph: React.FC = () => {
 
   // Prepare graph data & anchor Level 0 (Root) to the exact celestial center (0, 0, 0)
   const graphData = useMemo(() => {
-    const rawNodes = mockTreeRaw.nodes as DocumentTreeNode[];
-    const rawLinks = mockTreeRaw.links as DocumentTreeLink[];
-
-    const clonedNodes: DocumentTreeNode[] = rawNodes.map((n) => {
+    const clonedNodes: DocumentTreeNode[] = storeNodes.map((n) => {
       const nodeCopy = { ...n };
       if (nodeCopy.level === 0) {
         // Fix Root node to origin (0, 0, 0) to act as the primary Solar Anchor
@@ -127,13 +127,55 @@ export const DocumentGraph: React.FC = () => {
       return nodeCopy;
     });
 
-    const clonedLinks: DocumentTreeLink[] = rawLinks.map((l) => ({ ...l }));
+    const clonedLinks: DocumentTreeLink[] = storeLinks.map((l) => ({ ...l }));
 
     return {
       nodes: clonedNodes,
       links: clonedLinks,
     };
-  }, []);
+  }, [storeNodes, storeLinks]);
+
+  // ===========================================================================
+  // WebGL Render Loop Optimization: Pause on Idle / Zero GPU Drain
+  // ===========================================================================
+  const wakeRenderLoop = useCallback(() => {
+    if (idleTimeoutRef.current) {
+      clearTimeout(idleTimeoutRef.current);
+      idleTimeoutRef.current = null;
+    }
+    setIsEngineIdle(false);
+    if (dimension === "3d" && fg3dRef.current) {
+      fg3dRef.current.resumeAnimation();
+    }
+  }, [dimension, setIsEngineIdle]);
+
+  const handleEngineStop = useCallback(() => {
+    setIsEngineIdle(true);
+    // After a 500ms stabilization window, pause continuous WebGL render loop to prevent idle GPU drain
+    if (idleTimeoutRef.current) clearTimeout(idleTimeoutRef.current);
+    idleTimeoutRef.current = setTimeout(() => {
+      if (dimension === "3d" && fg3dRef.current) {
+        fg3dRef.current.pauseAnimation();
+      }
+    }, 500);
+  }, [setIsEngineIdle, dimension]);
+
+  // Wake render loop on user viewport events
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+
+    const handleInteraction = () => wakeRenderLoop();
+    el.addEventListener("pointerdown", handleInteraction);
+    el.addEventListener("wheel", handleInteraction, { passive: true });
+    el.addEventListener("touchstart", handleInteraction, { passive: true });
+
+    return () => {
+      el.removeEventListener("pointerdown", handleInteraction);
+      el.removeEventListener("wheel", handleInteraction);
+      el.removeEventListener("touchstart", handleInteraction);
+    };
+  }, [wakeRenderLoop]);
 
   // Configure D3 Physics Simulation (The "Solar System" effect)
   const configurePhysics = useCallback((fgInstance: any) => {
@@ -186,19 +228,21 @@ export const DocumentGraph: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    wakeRenderLoop();
     if (dimension === "3d" && fg3dRef.current) {
       configurePhysics(fg3dRef.current);
     } else if (dimension === "2d" && fg2dRef.current) {
       configurePhysics(fg2dRef.current);
     }
-  }, [dimension, graphData, configurePhysics]);
+  }, [dimension, graphData, configurePhysics, wakeRenderLoop]);
 
   // ===========================================================================
-  // Tracer Pulse & Camera Tracking Orchestration (Phase 5)
+  // Tracer Pulse & Camera Tracking Orchestration
   // ===========================================================================
   useEffect(() => {
     if (!isSearching || searchPath.length === 0) return;
 
+    wakeRenderLoop();
     let isCancelled = false;
 
     const runKnowledgePathSequence = async () => {
@@ -228,7 +272,7 @@ export const DocumentGraph: React.FC = () => {
                 z: (nodeObj.z || 0) + camDistance,
               },
               { x: nodeObj.x, y: nodeObj.y, z: nodeObj.z || 0 },
-              700 // Camera transition speed
+              700
             );
           } else if (dimension === "2d" && fg2dRef.current) {
             fg2dRef.current.centerAt(nodeObj.x, nodeObj.y, 700);
@@ -249,7 +293,6 @@ export const DocumentGraph: React.FC = () => {
 
             if (connectingLink && typeof fg.emitParticle === "function") {
               fg.emitParticle(connectingLink);
-              // Secondary wave pulse
               setTimeout(() => {
                 if (!isCancelled && typeof fg.emitParticle === "function") {
                   fg.emitParticle(connectingLink);
@@ -259,7 +302,6 @@ export const DocumentGraph: React.FC = () => {
           }
         }
 
-        // Each hop is ~750ms -> 4 nodes total ~3.0s timeline
         await new Promise((r) => setTimeout(r, 750));
       }
     };
@@ -269,10 +311,10 @@ export const DocumentGraph: React.FC = () => {
     return () => {
       isCancelled = true;
     };
-  }, [isSearching, searchPath, dimension]);
+  }, [isSearching, searchPath, dimension, graphData, wakeRenderLoop]);
 
   // ===========================================================================
-  // Custom 3D Node Mesh Generator (with Visual Dimming)
+  // Custom 3D Node Mesh Generator (with LOD Dynamic Scaling & Dimming)
   // ===========================================================================
   const nodeThreeObject = useCallback(
     (node: DocumentTreeNode) => {
@@ -302,8 +344,20 @@ export const DocumentGraph: React.FC = () => {
         ? 0.75
         : 0.35;
 
-      // 1. Primary Solid Sphere Mesh
-      const geometry = new THREE.SphereGeometry(radius, 24, 24);
+      // LOD (Level of Detail) Decision:
+      // When zoomed far out, omit text sprites and corona rings for distant Level 2 and Level 3 nodes
+      let isFar = false;
+      if (fg3dRef.current) {
+        const cam = fg3dRef.current.camera();
+        if (cam && node.x !== undefined && node.y !== undefined) {
+          const dist = cam.position.distanceTo(new THREE.Vector3(node.x, node.y, node.z || 0));
+          isFar = dist > 450;
+        }
+      }
+
+      // 1. Primary Solid Sphere Mesh (Low-poly 16 segments when far, 24 when near)
+      const segments = isFar ? 16 : 24;
+      const geometry = new THREE.SphereGeometry(radius, segments, segments);
       const material = new THREE.MeshStandardMaterial({
         color: new THREE.Color(hexColor),
         roughness: 0.15,
@@ -317,8 +371,12 @@ export const DocumentGraph: React.FC = () => {
       const sphere = new THREE.Mesh(geometry, material);
       group.add(sphere);
 
+      // Level of Detail Gating: High-res sprites and corona rings are mounted when close,
+      // or unconditionally for Root, H1, selected, hovered, or search path nodes.
+      const showHighDetail = isInPath && (node.level <= 1 || isSelected || isHovered || isTarget || !isFar);
+
       // 2. Solar Corona / Orbital Atmosphere Ring
-      if (isInPath && (node.level === 0 || node.level === 1 || isSelected || isHovered || isTarget)) {
+      if (showHighDetail && (node.level === 0 || node.level === 1 || isSelected || isHovered || isTarget)) {
         const ringGeo = new THREE.RingGeometry(radius * 1.3, radius * 1.6, 32);
         const ringMat = new THREE.MeshBasicMaterial({
           color: new THREE.Color(isTarget ? "#ffffff" : hexColor),
@@ -332,7 +390,7 @@ export const DocumentGraph: React.FC = () => {
       }
 
       // 3. Floating Text Label Sprite
-      if (isInPath && (node.level <= 1 || isSelected || isHovered || isTarget)) {
+      if (showHighDetail && (node.level <= 1 || isSelected || isHovered || isTarget)) {
         const labelText =
           node.label.length > 32 ? node.label.slice(0, 30) + "..." : node.label;
         const sprite = createTextSprite(
@@ -350,7 +408,7 @@ export const DocumentGraph: React.FC = () => {
   );
 
   // ===========================================================================
-  // Custom 2D Canvas Node Renderer (with Visual Dimming)
+  // Custom 2D Canvas Node Renderer
   // ===========================================================================
   const nodeCanvasObject = useCallback(
     (node: DocumentTreeNode, ctx: CanvasRenderingContext2D, globalScale: number) => {
@@ -391,8 +449,9 @@ export const DocumentGraph: React.FC = () => {
       ctx.strokeStyle = isTarget ? "#00f5ff" : "#ffffff";
       ctx.stroke();
 
-      // Text label
-      if (isInPath && (node.level <= 1 || isSelected || isHovered || isTarget || globalScale > 1.5)) {
+      // Text label (LOD: omit distant level 2/3 when scale is low)
+      const showText = isInPath && (node.level <= 1 || isSelected || isHovered || isTarget || globalScale > 1.3);
+      if (showText) {
         const label =
           node.label.length > 28 ? node.label.slice(0, 26) + "..." : node.label;
         const fontSize = Math.max(10, Math.min(14, 12 / globalScale));
@@ -413,6 +472,7 @@ export const DocumentGraph: React.FC = () => {
   // Node Interaction: Smooth Camera Zoom to Selected Node
   const handleNodeClick = useCallback(
     (node: DocumentTreeNode) => {
+      wakeRenderLoop();
       setSelectedNode(node);
 
       if (dimension === "3d" && fg3dRef.current && node.x !== undefined && node.y !== undefined) {
@@ -433,11 +493,12 @@ export const DocumentGraph: React.FC = () => {
         fg2dRef.current.zoom(2.2, 1000);
       }
     },
-    [setSelectedNode, dimension]
+    [setSelectedNode, dimension, wakeRenderLoop]
   );
 
   // Background Click: Reset selection and zoom out to fit all nodes
   const handleBackgroundClick = useCallback(() => {
+    wakeRenderLoop();
     setSelectedNode(null);
     clearSearch();
     if (dimension === "3d" && fg3dRef.current) {
@@ -445,7 +506,7 @@ export const DocumentGraph: React.FC = () => {
     } else if (dimension === "2d" && fg2dRef.current) {
       fg2dRef.current.zoomToFit(1000, 60);
     }
-  }, [setSelectedNode, clearSearch, dimension]);
+  }, [setSelectedNode, clearSearch, dimension, wakeRenderLoop]);
 
   return (
     <div
@@ -468,14 +529,19 @@ export const DocumentGraph: React.FC = () => {
              </div>`
           }
           onNodeClick={handleNodeClick}
-          onNodeHover={(node: any) => setHoveredNode(node || null)}
+          onNodeHover={(node: any) => {
+            wakeRenderLoop();
+            setHoveredNode(node || null);
+          }}
+          onNodeDrag={() => wakeRenderLoop()}
           onBackgroundClick={handleBackgroundClick}
+          onEngineStop={handleEngineStop}
           
           // Link Styling: Knowledge Path links glow vibrantly; irrelevant links dim to 5%
           linkColor={(link: any) => {
             const inPath = isLinkInPath(link, searchPath);
             if (searchPath.length > 0) {
-              return inPath ? "#00f5ffff" : "#ffffff0d"; // 100% cyan vs 5% dim white
+              return inPath ? "#00f5ffff" : "#ffffff0d";
             }
             const targetCluster =
               typeof link.target === "object" ? link.target.topic_cluster : "";
@@ -528,8 +594,13 @@ export const DocumentGraph: React.FC = () => {
             ctx.fill();
           }}
           onNodeClick={handleNodeClick}
-          onNodeHover={(node: any) => setHoveredNode(node || null)}
+          onNodeHover={(node: any) => {
+            wakeRenderLoop();
+            setHoveredNode(node || null);
+          }}
+          onNodeDrag={() => wakeRenderLoop()}
           onBackgroundClick={handleBackgroundClick}
+          onEngineStop={handleEngineStop}
           linkColor={(link: any) => {
             const inPath = isLinkInPath(link, searchPath);
             if (searchPath.length > 0) {

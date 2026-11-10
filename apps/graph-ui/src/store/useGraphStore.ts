@@ -1,18 +1,20 @@
 import { create } from "zustand";
-import { DocumentTreeNode } from "../data/types";
+import { DocumentTreeNode, DocumentTreeLink } from "../data/types";
 import mockTree from "../data/mock_document_tree.json";
 
 interface GraphState {
   // Graph Data
   nodes: DocumentTreeNode[];
-  links: Array<{ source: string; target: string }>;
+  links: DocumentTreeLink[];
+  dataSource: "live" | "fallback";
   
   // Selection & Inspector State
   selectedNode: DocumentTreeNode | null;
   hoveredNode: DocumentTreeNode | null;
   
-  // Visual Mode
+  // Visual Mode & Engine State
   dimension: "2d" | "3d";
+  isEngineIdle: boolean;
   
   // Cluster Filter
   activeCluster: string | null;
@@ -21,13 +23,15 @@ interface GraphState {
   searchQuery: string;
   isSearching: boolean;
   searchPath: string[]; // Node IDs in sequence: [Root, H1, H2, Flashcard]
-  searchLinks: any[];   // Link objects corresponding to the path
+  searchLinks: any[];   // Link objects along the path
   targetNode: DocumentTreeNode | null;
 
   // Actions
+  setGraphData: (data: { nodes: DocumentTreeNode[]; links: DocumentTreeLink[] }, source?: "live" | "fallback") => void;
   setSelectedNode: (node: DocumentTreeNode | null) => void;
   setHoveredNode: (node: DocumentTreeNode | null) => void;
   setDimension: (dimension: "2d" | "3d") => void;
+  setIsEngineIdle: (isIdle: boolean) => void;
   setActiveCluster: (cluster: string | null) => void;
   setSearchQuery: (query: string) => void;
   setSearchState: (params: {
@@ -43,11 +47,13 @@ interface GraphState {
 
 export const useGraphStore = create<GraphState>((set) => ({
   nodes: mockTree.nodes as DocumentTreeNode[],
-  links: mockTree.links,
+  links: mockTree.links as DocumentTreeLink[],
+  dataSource: "fallback",
   
   selectedNode: null,
   hoveredNode: null,
   dimension: "3d",
+  isEngineIdle: false,
   activeCluster: null,
 
   // Initial Search State
@@ -57,9 +63,29 @@ export const useGraphStore = create<GraphState>((set) => ({
   searchLinks: [],
   targetNode: null,
 
+  setGraphData: ({ nodes, links }, source = "fallback") =>
+    set((state) => {
+      // Re-verify selectedNode within new dataset
+      const updatedSelected = state.selectedNode
+        ? nodes.find((n) => n.id === state.selectedNode?.id) || nodes[0] || null
+        : nodes[0] || null;
+
+      return {
+        nodes,
+        links,
+        dataSource: source,
+        selectedNode: updatedSelected,
+        searchPath: [],
+        searchLinks: [],
+        isSearching: false,
+        targetNode: null,
+      };
+    }),
+
   setSelectedNode: (node) => set({ selectedNode: node }),
   setHoveredNode: (node) => set({ hoveredNode: node }),
   setDimension: (dimension) => set({ dimension }),
+  setIsEngineIdle: (isEngineIdle) => set({ isEngineIdle }),
   setActiveCluster: (activeCluster) => set({ activeCluster }),
   setSearchQuery: (searchQuery) => set({ searchQuery }),
 

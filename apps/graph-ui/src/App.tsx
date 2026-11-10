@@ -1,7 +1,8 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Layout } from "./components/Layout";
 import { DocumentGraph } from "./components/DocumentGraph";
 import { useGraphStore } from "./store/useGraphStore";
+import { useDocumentData } from "./hooks/useDocumentData";
 import { CLUSTER_COLOR_MAP } from "./hooks/useClusterColor";
 import { findHierarchyPath } from "./utils/pathfinding";
 import {
@@ -15,6 +16,10 @@ import {
   CheckCircle2,
   ChevronRight,
   Compass,
+  RefreshCw,
+  Cpu,
+  Wifi,
+  WifiOff,
 } from "lucide-react";
 
 const SAMPLE_SEARCH_PRESETS = [
@@ -40,11 +45,41 @@ export const App: React.FC = () => {
     searchPath,
     setSearchState,
     clearSearch,
+    setGraphData,
+    dataSource,
+    isEngineIdle,
   } = useGraphStore();
 
-  const [inputVal, setInputVal] = useState("");
+  const { data, isLoading, isFallback, refetch } = useDocumentData({
+    timeoutMs: 2500,
+  });
 
-  const activeNode = selectedNode || nodes[0];
+  const [inputVal, setInputVal] = useState("");
+  const [isRetrying, setIsRetrying] = useState(false);
+
+  // Synchronize ingested or fallback data into the centralized Zustand graph store
+  useEffect(() => {
+    if (data && data.nodes && data.links) {
+      setGraphData(data, isFallback ? "fallback" : "live");
+    }
+  }, [data, isFallback, setGraphData]);
+
+  const activeNode = selectedNode || nodes[0] || {
+    id: "empty",
+    label: "Loading...",
+    level: 0,
+    topic_cluster: "General",
+    panel_payload: "Connecting to VERITAS backend pipeline...",
+  };
+
+  const handleManualRefetch = async () => {
+    setIsRetrying(true);
+    try {
+      await refetch();
+    } finally {
+      setIsRetrying(false);
+    }
+  };
 
   // Execute BFS pathfinding & initiate Tracer Pulse
   const executeSearch = (rawQuery: string) => {
@@ -125,7 +160,7 @@ export const App: React.FC = () => {
                   VERITAS
                 </span>
                 <span className="text-[10px] font-mono tracking-widest bg-cyan-950/80 text-cyan-400 border border-cyan-800/60 px-2 py-0.5 rounded uppercase">
-                  Phase 5: Tracer Pulse
+                  v1.0 • WebGL Engine
                 </span>
               </div>
               <p className="text-[11px] text-slate-400 tracking-tight">
@@ -207,12 +242,53 @@ export const App: React.FC = () => {
             </div>
           </div>
 
-          {/* Controls: Mode & Status */}
+          {/* Controls: Telemetry, GPU State, Dimensions */}
           <div className="flex items-center space-x-2 shrink-0">
+            {/* Live Data Connection Badge with Retry Button */}
+            <div
+              className={`flex items-center space-x-1.5 px-2.5 py-1 rounded-xl text-[11px] font-mono border transition-all ${
+                dataSource === "live"
+                  ? "bg-emerald-950/60 text-emerald-300 border-emerald-500/40"
+                  : "bg-amber-950/40 text-amber-300 border-amber-500/30"
+              }`}
+            >
+              {dataSource === "live" ? (
+                <>
+                  <Wifi className="w-3 h-3 text-emerald-400 animate-pulse" />
+                  <span>LIVE API</span>
+                </>
+              ) : (
+                <>
+                  <WifiOff className="w-3 h-3 text-amber-400" />
+                  <span>FALLBACK</span>
+                  <button
+                    onClick={handleManualRefetch}
+                    title="Retry live API connection"
+                    className="ml-1 p-0.5 hover:text-white transition-colors"
+                  >
+                    <RefreshCw className={`w-3 h-3 ${isRetrying ? "animate-spin" : ""}`} />
+                  </button>
+                </>
+              )}
+            </div>
+
+            {/* GPU Idle Status Indicator */}
+            <div
+              className={`hidden sm:flex items-center space-x-1 px-2 py-1 rounded-xl text-[10px] font-mono border transition-all ${
+                isEngineIdle
+                  ? "bg-blue-950/50 text-cyan-300 border-cyan-500/30"
+                  : "bg-white/5 text-slate-400 border-white/10"
+              }`}
+              title={isEngineIdle ? "WebGL Render Loop Paused (0% GPU Idle Drain)" : "WebGL Physics Actively Simulating"}
+            >
+              <Cpu className="w-3 h-3 text-cyan-400" />
+              <span>{isEngineIdle ? "GPU IDLE" : "60 FPS"}</span>
+            </div>
+
             {isSearching && (
               <div className="hidden lg:flex items-center space-x-1.5 text-xs font-mono text-cyan-300 bg-cyan-950/70 border border-cyan-400/40 px-2.5 py-1 rounded-xl animate-pulse">
                 <Zap className="w-3.5 h-3.5 text-cyan-400" />
-                <span>Path Active ({searchPath.length} hops)</span>
+                <span>Path ({searchPath.length})</span>
               </div>
             )}
 
@@ -367,14 +443,35 @@ export const App: React.FC = () => {
             </div>
             <div className="flex items-center space-x-1.5">
               <Layers className="w-3.5 h-3.5 text-purple-400" />
-              <span>Tracer Active</span>
+              <span>{dataSource === "live" ? "Live Stream" : "Static Cache"}</span>
             </div>
           </div>
         </div>
       }
     >
-      {/* Mounted Full-Bleed 3D WebGL Force Graph Canvas with Tracer Pulse */}
-      <DocumentGraph />
+      {/* Mounted Full-Bleed 3D WebGL Force Graph Canvas */}
+      <div className="relative w-full h-full">
+        <DocumentGraph />
+
+        {/* Glassmorphic Initial Loading Overlay */}
+        {isLoading && (
+          <div className="absolute inset-0 z-50 bg-[#0a0b10]/80 backdrop-blur-md flex flex-col items-center justify-center space-y-4">
+            <div className="relative flex items-center justify-center">
+              <div className="w-16 h-16 rounded-full border-2 border-cyan-400/20 border-t-cyan-400 animate-spin" />
+              <div className="absolute w-10 h-10 rounded-full border-2 border-blue-500/20 border-b-blue-400 animate-spin" style={{ animationDirection: "reverse", animationDuration: "1.5s" }} />
+              <ShieldCheck className="w-6 h-6 text-cyan-400 animate-pulse" />
+            </div>
+            <div className="text-center space-y-1">
+              <p className="text-sm font-semibold text-white tracking-wide">
+                Ingesting VERITAS Document Tree
+              </p>
+              <p className="text-xs font-mono text-cyan-400/80">
+                Pinging API endpoint & initializing WebGL physics...
+              </p>
+            </div>
+          </div>
+        )}
+      </div>
     </Layout>
   );
 };

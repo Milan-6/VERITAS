@@ -46,3 +46,4 @@ veritas_uploads/
 .idea/
 .DS_Store
 Thumbs.db
+*.tsbuildinfo
