@@ -1,1 +1,1 @@
-{"root":["./src/app.tsx","./src/main.tsx","./src/components/documentgraph.tsx","./src/components/layout.tsx","./src/data/types.ts","./src/hooks/useclustercolor.ts","./src/store/usegraphstore.ts"],"version":"5.6.3"}
+{"root":["./src/app.tsx","./src/main.tsx","./src/components/documentgraph.tsx","./src/components/layout.tsx","./src/data/types.ts","./src/hooks/useclustercolor.ts","./src/store/usegraphstore.ts","./src/utils/pathfinding.ts"],"version":"5.6.3"}

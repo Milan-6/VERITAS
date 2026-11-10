@@ -8,6 +8,7 @@ import {
   getClusterColor,
   getNodeRadius,
 } from "../hooks/useClusterColor";
+import { getNodeId } from "../utils/pathfinding";
 import mockTreeRaw from "../data/mock_document_tree.json";
 
 /**
@@ -27,7 +28,7 @@ function createTextSprite(text: string, colorHex: string, fontSize: number = 28)
 
   // Text Glow Effect
   ctx.shadowColor = colorHex;
-  ctx.shadowBlur = 12;
+  ctx.shadowBlur = 14;
   ctx.fillText(text, canvas.width / 2, canvas.height / 2);
 
   const texture = new THREE.CanvasTexture(canvas);
@@ -39,8 +40,26 @@ function createTextSprite(text: string, colorHex: string, fontSize: number = 28)
   });
 
   const sprite = new THREE.Sprite(spriteMaterial);
-  sprite.scale.set(40, 10, 1);
+  sprite.scale.set(42, 10.5, 1);
   return sprite;
+}
+
+/**
+ * Checks if a graph link directly connects two consecutive nodes in the active knowledge path
+ */
+function isLinkInPath(link: any, searchPath: string[]): boolean {
+  if (!searchPath || searchPath.length < 2) return false;
+  const s = getNodeId(link.source);
+  const t = getNodeId(link.target);
+
+  for (let i = 0; i < searchPath.length - 1; i++) {
+    const a = searchPath[i];
+    const b = searchPath[i + 1];
+    if ((s === a && t === b) || (s === b && t === a)) {
+      return true;
+    }
+  }
+  return false;
 }
 
 export const DocumentGraph: React.FC = () => {
@@ -60,6 +79,9 @@ export const DocumentGraph: React.FC = () => {
     hoveredNode,
     setHoveredNode,
     activeCluster,
+    isSearching,
+    searchPath,
+    clearSearch,
   } = useGraphStore();
 
   // Responsive full-bleed container observer
@@ -114,58 +136,54 @@ export const DocumentGraph: React.FC = () => {
   }, []);
 
   // Configure D3 Physics Simulation (The "Solar System" effect)
-  const configurePhysics = useCallback(
-    (fgInstance: any) => {
-      if (!fgInstance) return;
+  const configurePhysics = useCallback((fgInstance: any) => {
+    if (!fgInstance) return;
 
-      // 1. Charge Force: Deep repulsion avoiding cluster overlap
-      const chargeForce = fgInstance.d3Force("charge");
-      if (chargeForce) {
-        chargeForce.strength((node: any) => {
-          if (node.level === 0) return -1800; // Strong central solar repulsion
-          if (node.level === 1) return -700;  // Planetary major body repulsion
-          if (node.level === 2) return -300;  // Moon sub-satellite repulsion
-          return -120;                        // Flashcard particle repulsion
-        });
-        chargeForce.distanceMax(800);
-      }
+    // 1. Charge Force: Deep repulsion avoiding cluster overlap
+    const chargeForce = fgInstance.d3Force("charge");
+    if (chargeForce) {
+      chargeForce.strength((node: any) => {
+        if (node.level === 0) return -1800; // Strong central solar repulsion
+        if (node.level === 1) return -700;  // Planetary major body repulsion
+        if (node.level === 2) return -300;  // Moon sub-satellite repulsion
+        return -120;                        // Flashcard particle repulsion
+      });
+      chargeForce.distanceMax(800);
+    }
 
-      // 2. Link Force: Hierarchy-tiered orbit distances
-      const linkForce = fgInstance.d3Force("link");
-      if (linkForce) {
-        linkForce.distance((link: any) => {
-          const sLevel = typeof link.source === "object" ? link.source.level : 0;
-          const tLevel = typeof link.target === "object" ? link.target.level : 0;
-          const minL = Math.min(sLevel, tLevel);
-          const maxL = Math.max(sLevel, tLevel);
+    // 2. Link Force: Hierarchy-tiered orbit distances
+    const linkForce = fgInstance.d3Force("link");
+    if (linkForce) {
+      linkForce.distance((link: any) => {
+        const sLevel = typeof link.source === "object" ? link.source.level : 0;
+        const tLevel = typeof link.target === "object" ? link.target.level : 0;
+        const minL = Math.min(sLevel, tLevel);
+        const maxL = Math.max(sLevel, tLevel);
 
-          if (minL === 0 && maxL === 1) {
-            return 210; // Root to H1: wide primary orbital circumference
-          }
-          if (minL === 1 && maxL === 2) {
-            return 90;  // H1 to H2: planetary moon orbit
-          }
-          if (minL === 2 && maxL === 3) {
-            return 40;  // H2 to Flashcard: compact satellite cluster
-          }
-          return 120; // Cross-cluster semantic links
-        });
+        if (minL === 0 && maxL === 1) {
+          return 210; // Root to H1: wide primary orbital circumference
+        }
+        if (minL === 1 && maxL === 2) {
+          return 90;  // H1 to H2: planetary moon orbit
+        }
+        if (minL === 2 && maxL === 3) {
+          return 40;  // H2 to Flashcard: compact satellite cluster
+        }
+        return 120; // Cross-cluster semantic links
+      });
 
-        linkForce.strength((link: any) => {
-          const maxL = Math.max(
-            typeof link.source === "object" ? link.source.level : 0,
-            typeof link.target === "object" ? link.target.level : 0
-          );
-          // Stronger spring tension for satellite clusters to orbit as a cohesive group
-          return maxL === 3 ? 0.85 : 0.45;
-        });
-      }
+      linkForce.strength((link: any) => {
+        const maxL = Math.max(
+          typeof link.source === "object" ? link.source.level : 0,
+          typeof link.target === "object" ? link.target.level : 0
+        );
+        return maxL === 3 ? 0.85 : 0.45;
+      });
+    }
 
-      // Reheat simulation smoothly
-      fgInstance.d3ReheatSimulation();
-    },
-    []
-  );
+    // Reheat simulation smoothly
+    fgInstance.d3ReheatSimulation();
+  }, []);
 
   useEffect(() => {
     if (dimension === "3d" && fg3dRef.current) {
@@ -175,16 +193,114 @@ export const DocumentGraph: React.FC = () => {
     }
   }, [dimension, graphData, configurePhysics]);
 
-  // Custom 3D Node Mesh Generator
+  // ===========================================================================
+  // Tracer Pulse & Camera Tracking Orchestration (Phase 5)
+  // ===========================================================================
+  useEffect(() => {
+    if (!isSearching || searchPath.length === 0) return;
+
+    let isCancelled = false;
+
+    const runKnowledgePathSequence = async () => {
+      const fg = dimension === "3d" ? fg3dRef.current : fg2dRef.current;
+      if (!fg) return;
+
+      const liveNodes = graphData.nodes;
+      const liveLinks = graphData.links;
+
+      // Hop sequentially along the nodes in searchPath: [Root, H1, H2, Flashcard]
+      for (let i = 0; i < searchPath.length; i++) {
+        if (isCancelled) break;
+        const nodeId = searchPath[i];
+        const nodeObj = liveNodes.find((n: any) => n.id === nodeId);
+
+        if (nodeObj && nodeObj.x !== undefined && nodeObj.y !== undefined) {
+          const isFinalTarget = i === searchPath.length - 1;
+          const camDistance = isFinalTarget ? 85 : i === 0 ? 220 : 140;
+
+          // Camera navigation
+          if (dimension === "3d" && fg3dRef.current) {
+            const distRatio = 1 + camDistance / Math.hypot(nodeObj.x, nodeObj.y, nodeObj.z || 0);
+            fg3dRef.current.cameraPosition(
+              {
+                x: nodeObj.x * distRatio,
+                y: nodeObj.y * distRatio,
+                z: (nodeObj.z || 0) + camDistance,
+              },
+              { x: nodeObj.x, y: nodeObj.y, z: nodeObj.z || 0 },
+              700 // Camera transition speed
+            );
+          } else if (dimension === "2d" && fg2dRef.current) {
+            fg2dRef.current.centerAt(nodeObj.x, nodeObj.y, 700);
+            fg2dRef.current.zoom(isFinalTarget ? 3.0 : 1.8, 700);
+          }
+
+          // Emit sequential energy particle along the link connecting this node to the next
+          if (i < searchPath.length - 1) {
+            const nextNodeId = searchPath[i + 1];
+            const connectingLink = liveLinks.find((l: any) => {
+              const ls = getNodeId(l.source);
+              const lt = getNodeId(l.target);
+              return (
+                (ls === nodeId && lt === nextNodeId) ||
+                (ls === nextNodeId && lt === nodeId)
+              );
+            });
+
+            if (connectingLink && typeof fg.emitParticle === "function") {
+              fg.emitParticle(connectingLink);
+              // Secondary wave pulse
+              setTimeout(() => {
+                if (!isCancelled && typeof fg.emitParticle === "function") {
+                  fg.emitParticle(connectingLink);
+                }
+              }, 160);
+            }
+          }
+        }
+
+        // Each hop is ~750ms -> 4 nodes total ~3.0s timeline
+        await new Promise((r) => setTimeout(r, 750));
+      }
+    };
+
+    runKnowledgePathSequence();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [isSearching, searchPath, dimension]);
+
+  // ===========================================================================
+  // Custom 3D Node Mesh Generator (with Visual Dimming)
+  // ===========================================================================
   const nodeThreeObject = useCallback(
     (node: DocumentTreeNode) => {
       const radius = getNodeRadius(node.level);
       const hexColor = getClusterColor(node.topic_cluster);
+
+      const isPathActive = searchPath.length > 0;
+      const isInPath = isPathActive ? searchPath.includes(node.id) : true;
+      const isTarget = isPathActive && searchPath[searchPath.length - 1] === node.id;
       const isSelected = selectedNode?.id === node.id;
       const isHovered = hoveredNode?.id === node.id;
-      const isFilteredOut = activeCluster !== null && node.topic_cluster !== activeCluster;
+      const isClusterFiltered = activeCluster !== null && node.topic_cluster !== activeCluster;
 
       const group = new THREE.Group();
+
+      // Visual Dimming: Irrelevant nodes drop to 10% opacity
+      const opacity = !isInPath ? 0.10 : isClusterFiltered ? 0.25 : 1.0;
+      const emissiveIntensity = !isInPath
+        ? 0.05
+        : isTarget
+        ? 1.8
+        : isSelected
+        ? 1.3
+        : isHovered
+        ? 0.95
+        : node.level === 0
+        ? 0.75
+        : 0.35;
 
       // 1. Primary Solid Sphere Mesh
       const geometry = new THREE.SphereGeometry(radius, 24, 24);
@@ -193,44 +309,36 @@ export const DocumentGraph: React.FC = () => {
         roughness: 0.15,
         metalness: 0.8,
         emissive: new THREE.Color(hexColor),
-        emissiveIntensity: isSelected
-          ? 1.2
-          : isHovered
-          ? 0.9
-          : node.level === 0
-          ? 0.75
-          : isFilteredOut
-          ? 0.1
-          : 0.35,
-        transparent: isFilteredOut,
-        opacity: isFilteredOut ? 0.25 : 1.0,
+        emissiveIntensity,
+        transparent: true,
+        opacity,
       });
 
       const sphere = new THREE.Mesh(geometry, material);
       group.add(sphere);
 
-      // 2. Solar Corona / Orbital Atmosphere Ring for Root, H1, or Active Nodes
-      if (node.level === 0 || node.level === 1 || isSelected || isHovered) {
-        const ringGeo = new THREE.RingGeometry(radius * 1.3, radius * 1.55, 32);
+      // 2. Solar Corona / Orbital Atmosphere Ring
+      if (isInPath && (node.level === 0 || node.level === 1 || isSelected || isHovered || isTarget)) {
+        const ringGeo = new THREE.RingGeometry(radius * 1.3, radius * 1.6, 32);
         const ringMat = new THREE.MeshBasicMaterial({
-          color: new THREE.Color(hexColor),
+          color: new THREE.Color(isTarget ? "#ffffff" : hexColor),
           side: THREE.DoubleSide,
           transparent: true,
-          opacity: isSelected ? 0.7 : isHovered ? 0.5 : node.level === 0 ? 0.45 : 0.25,
+          opacity: isTarget ? 0.85 : isSelected ? 0.7 : isHovered ? 0.5 : 0.35,
         });
         const ring = new THREE.Mesh(ringGeo, ringMat);
         ring.rotation.x = Math.PI / 3;
         group.add(ring);
       }
 
-      // 3. Floating Text Label Sprite (Levels 0, 1, or Active Selection)
-      if (node.level <= 1 || isSelected || isHovered) {
+      // 3. Floating Text Label Sprite
+      if (isInPath && (node.level <= 1 || isSelected || isHovered || isTarget)) {
         const labelText =
           node.label.length > 32 ? node.label.slice(0, 30) + "..." : node.label;
         const sprite = createTextSprite(
           labelText,
-          hexColor,
-          node.level === 0 ? 32 : 24
+          isTarget ? "#00f5ff" : hexColor,
+          isTarget ? 34 : node.level === 0 ? 32 : 24
         );
         sprite.position.set(0, radius + 8, 0);
         group.add(sprite);
@@ -238,28 +346,34 @@ export const DocumentGraph: React.FC = () => {
 
       return group;
     },
-    [selectedNode, hoveredNode, activeCluster]
+    [selectedNode, hoveredNode, activeCluster, searchPath]
   );
 
-  // Custom 2D Canvas Node Renderer
+  // ===========================================================================
+  // Custom 2D Canvas Node Renderer (with Visual Dimming)
+  // ===========================================================================
   const nodeCanvasObject = useCallback(
     (node: DocumentTreeNode, ctx: CanvasRenderingContext2D, globalScale: number) => {
       const radius = getNodeRadius(node.level);
       const hexColor = getClusterColor(node.topic_cluster);
+
+      const isPathActive = searchPath.length > 0;
+      const isInPath = isPathActive ? searchPath.includes(node.id) : true;
+      const isTarget = isPathActive && searchPath[searchPath.length - 1] === node.id;
       const isSelected = selectedNode?.id === node.id;
       const isHovered = hoveredNode?.id === node.id;
-      const isFilteredOut = activeCluster !== null && node.topic_cluster !== activeCluster;
+      const isClusterFiltered = activeCluster !== null && node.topic_cluster !== activeCluster;
 
       const x = node.x || 0;
       const y = node.y || 0;
 
       ctx.save();
-      ctx.globalAlpha = isFilteredOut ? 0.2 : 1.0;
+      ctx.globalAlpha = !isInPath ? 0.10 : isClusterFiltered ? 0.25 : 1.0;
 
-      // Glow halo on hover or selection
-      if (isSelected || isHovered || node.level === 0) {
+      // Glow halo on hover, selection, target, or root
+      if (isInPath && (isSelected || isHovered || isTarget || node.level === 0)) {
         ctx.beginPath();
-        ctx.arc(x, y, radius * 1.4, 0, 2 * Math.PI, false);
+        ctx.arc(x, y, radius * 1.5, 0, 2 * Math.PI, false);
         ctx.fillStyle = `${hexColor}33`;
         ctx.fill();
       }
@@ -267,25 +381,25 @@ export const DocumentGraph: React.FC = () => {
       // Solid Node Body
       ctx.beginPath();
       ctx.arc(x, y, radius, 0, 2 * Math.PI, false);
-      ctx.fillStyle = hexColor;
+      ctx.fillStyle = isTarget ? "#ffffff" : hexColor;
       ctx.shadowColor = hexColor;
-      ctx.shadowBlur = isSelected ? 20 : isHovered ? 15 : 8;
+      ctx.shadowBlur = !isInPath ? 0 : isTarget ? 25 : isSelected ? 20 : isHovered ? 15 : 8;
       ctx.fill();
 
       // Border Ring
-      ctx.lineWidth = isSelected ? 2.5 : 1.2;
-      ctx.strokeStyle = "#ffffff";
+      ctx.lineWidth = isTarget ? 3.0 : isSelected ? 2.5 : 1.2;
+      ctx.strokeStyle = isTarget ? "#00f5ff" : "#ffffff";
       ctx.stroke();
 
-      // Text label for Level 0, 1, or when zoomed in
-      if (node.level <= 1 || isSelected || isHovered || globalScale > 1.5) {
+      // Text label
+      if (isInPath && (node.level <= 1 || isSelected || isHovered || isTarget || globalScale > 1.5)) {
         const label =
           node.label.length > 28 ? node.label.slice(0, 26) + "..." : node.label;
         const fontSize = Math.max(10, Math.min(14, 12 / globalScale));
         ctx.font = `600 ${fontSize}px sans-serif`;
         ctx.textAlign = "center";
         ctx.textBaseline = "top";
-        ctx.fillStyle = "#ffffff";
+        ctx.fillStyle = isTarget ? "#00f5ff" : "#ffffff";
         ctx.shadowColor = "#000000";
         ctx.shadowBlur = 4;
         ctx.fillText(label, x, y + radius + 4);
@@ -293,7 +407,7 @@ export const DocumentGraph: React.FC = () => {
 
       ctx.restore();
     },
-    [selectedNode, hoveredNode, activeCluster]
+    [selectedNode, hoveredNode, activeCluster, searchPath]
   );
 
   // Node Interaction: Smooth Camera Zoom to Selected Node
@@ -312,7 +426,7 @@ export const DocumentGraph: React.FC = () => {
             z: (node.z || 0) + distance,
           },
           { x: node.x, y: node.y, z: node.z || 0 },
-          1200 // Camera transition in milliseconds
+          1200
         );
       } else if (dimension === "2d" && fg2dRef.current && node.x !== undefined && node.y !== undefined) {
         fg2dRef.current.centerAt(node.x, node.y, 1000);
@@ -325,12 +439,13 @@ export const DocumentGraph: React.FC = () => {
   // Background Click: Reset selection and zoom out to fit all nodes
   const handleBackgroundClick = useCallback(() => {
     setSelectedNode(null);
+    clearSearch();
     if (dimension === "3d" && fg3dRef.current) {
       fg3dRef.current.zoomToFit(1000, 60);
     } else if (dimension === "2d" && fg2dRef.current) {
       fg2dRef.current.zoomToFit(1000, 60);
     }
-  }, [setSelectedNode, dimension]);
+  }, [setSelectedNode, clearSearch, dimension]);
 
   return (
     <div
@@ -356,18 +471,36 @@ export const DocumentGraph: React.FC = () => {
           onNodeHover={(node: any) => setHoveredNode(node || null)}
           onBackgroundClick={handleBackgroundClick}
           
-          // Link Styling & Neural Pulse Particles
+          // Link Styling: Knowledge Path links glow vibrantly; irrelevant links dim to 5%
           linkColor={(link: any) => {
+            const inPath = isLinkInPath(link, searchPath);
+            if (searchPath.length > 0) {
+              return inPath ? "#00f5ffff" : "#ffffff0d"; // 100% cyan vs 5% dim white
+            }
             const targetCluster =
               typeof link.target === "object" ? link.target.topic_cluster : "";
             const hex = getClusterColor(targetCluster);
-            return `${hex}44`; // 25% opacity for subtle orbital lines
+            return `${hex}44`;
           }}
-          linkWidth={1.2}
-          linkDirectionalParticles={1}
-          linkDirectionalParticleSpeed={0.0035}
-          linkDirectionalParticleWidth={1.8}
+          linkWidth={(link: any) => {
+            const inPath = isLinkInPath(link, searchPath);
+            return inPath ? 3.5 : 1.0;
+          }}
+          linkDirectionalParticles={(link: any) => {
+            const inPath = isLinkInPath(link, searchPath);
+            return inPath ? 3 : 1;
+          }}
+          linkDirectionalParticleSpeed={(link: any) => {
+            const inPath = isLinkInPath(link, searchPath);
+            return inPath ? 0.007 : 0.0035;
+          }}
+          linkDirectionalParticleWidth={(link: any) => {
+            const inPath = isLinkInPath(link, searchPath);
+            return inPath ? 2.8 : 1.6;
+          }}
           linkDirectionalParticleColor={(link: any) => {
+            const inPath = isLinkInPath(link, searchPath);
+            if (inPath) return "#00f5ff";
             const targetCluster =
               typeof link.target === "object" ? link.target.topic_cluster : "";
             return getClusterColor(targetCluster);
@@ -398,16 +531,34 @@ export const DocumentGraph: React.FC = () => {
           onNodeHover={(node: any) => setHoveredNode(node || null)}
           onBackgroundClick={handleBackgroundClick}
           linkColor={(link: any) => {
+            const inPath = isLinkInPath(link, searchPath);
+            if (searchPath.length > 0) {
+              return inPath ? "#00f5ffff" : "#ffffff0d";
+            }
             const targetCluster =
               typeof link.target === "object" ? link.target.topic_cluster : "";
             const hex = getClusterColor(targetCluster);
             return `${hex}44`;
           }}
-          linkWidth={1.2}
-          linkDirectionalParticles={1}
-          linkDirectionalParticleSpeed={0.0035}
-          linkDirectionalParticleWidth={1.8}
+          linkWidth={(link: any) => {
+            const inPath = isLinkInPath(link, searchPath);
+            return inPath ? 3.5 : 1.0;
+          }}
+          linkDirectionalParticles={(link: any) => {
+            const inPath = isLinkInPath(link, searchPath);
+            return inPath ? 3 : 1;
+          }}
+          linkDirectionalParticleSpeed={(link: any) => {
+            const inPath = isLinkInPath(link, searchPath);
+            return inPath ? 0.007 : 0.0035;
+          }}
+          linkDirectionalParticleWidth={(link: any) => {
+            const inPath = isLinkInPath(link, searchPath);
+            return inPath ? 2.8 : 1.6;
+          }}
           linkDirectionalParticleColor={(link: any) => {
+            const inPath = isLinkInPath(link, searchPath);
+            if (inPath) return "#00f5ff";
             const targetCluster =
               typeof link.target === "object" ? link.target.topic_cluster : "";
             return getClusterColor(targetCluster);
