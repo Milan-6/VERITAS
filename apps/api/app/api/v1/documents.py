@@ -25,6 +25,8 @@ from app.schemas.document import (
 )
 from app.services.storage import storage_service
 from app.services.vector_store import vector_store
+from app.services.audit import audit_service
+from app.models.audit import DocumentAuditAction
 from app.workers.queue import job_manager
 
 router = APIRouter(prefix="/documents", tags=["Documents"])
@@ -181,6 +183,14 @@ def get_document_detail(
     """
     doc = verify_document_access(document_id, current_user, db, require_write=False)
     
+    # Phase 14: Document Access Audit Trail (COMP-01)
+    audit_service.log_document_access(
+        document_id=doc.id,
+        action=DocumentAuditAction.VIEW.value,
+        workspace_id=doc.workspace_id,
+        user_id=current_user.id,
+    )
+
     detail = DocumentDetailOut.model_validate(doc)
     if doc.processing_jobs:
         detail.latest_job = DocumentProcessingJobOut.model_validate(doc.processing_jobs[0])
@@ -273,6 +283,14 @@ def download_document(
     doc = verify_document_access(document_id, current_user, db, require_write=False)
     if not os.path.exists(doc.storage_path):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Stored file missing from disk")
+
+    # Phase 14: Document Access Audit Trail (COMP-01)
+    audit_service.log_document_access(
+        document_id=doc.id,
+        action=DocumentAuditAction.DOWNLOAD.value,
+        workspace_id=doc.workspace_id,
+        user_id=current_user.id,
+    )
 
     return FileResponse(
         path=doc.storage_path,

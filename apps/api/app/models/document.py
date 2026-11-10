@@ -61,6 +61,7 @@ class Document(Base):
     extracted_sections = relationship("ExtractedSection", back_populates="document", cascade="all, delete-orphan", order_by="ExtractedSection.order_index")
     extracted_contents = relationship("ExtractedContent", back_populates="document", cascade="all, delete-orphan", order_by="ExtractedContent.order_index")
     semantic_chunks = relationship("SemanticChunk", back_populates="document", cascade="all, delete-orphan", order_by="SemanticChunk.chunk_index")
+    audit_logs = relationship("DocumentAuditLog", back_populates="document")
 
 
 class DocumentMetadata(Base):

@@ -23,6 +23,21 @@
 | **Phase 11** | Collaboration, Export & Integrations | **COMPLETED** |
 | **Phase 12** | Advanced Integrations (Zotero, Webhooks & Encryption) | **COMPLETED** |
 | **Phase 13** | Platform Analytics & Telemetry (Cost, Rate Limiting & Admin Dashboard) | **COMPLETED** |
+| **Phase 14** | Security, Auditing & Compliance (Prompt Defense, Immutable Audit & GDPR) | **COMPLETED** |
+
+---
+
+## Phase 14 Detailed Milestones & Tasks
+
+| Task ID | Milestone / Deliverable | Status | Verification Detail |
+| :--- | :--- | :--- | :--- |
+| **P14-M1** | Prerequisite Verification & Baseline Audit | **COMPLETED** | Verified Phase 13 report, verified all 71 existing tests passing in 5.95s, confirmed database cascade behaviors. |
+| **P14-M2** | Audit Trail Database Schemas & Migrations | **COMPLETED** | Created `DocumentAuditLog` and `SecurityIncidentLog` in `app/models/audit.py` with multi-tenant time-series indexes on `timestamp` and `(workspace_id, timestamp)`. Applied Alembic migration `404b82c565c4`. Implemented `AuditService` in `app/services/audit.py`. |
+| **P14-M3** | Prompt Injection & Jailbreak Defense | **COMPLETED** | Implemented `PromptSecurityService` with zero-latency regex matching covering instruction overrides, DAN jailbreaks, system prompt leaks, and control token injections. Integrated into Chat, Agent, and Matrix endpoints returning HTTP 400 and recording high-severity security incidents. |
+| **P14-M4** | GDPR Compliance & Data Sovereignty Backend | **COMPLETED** | Built `GET /api/v1/users/me/export` (data portability JSON archive) and `DELETE /api/v1/users/me` (permanent account purge wiping disk files, Qdrant vectors, database models, and unlinking shared memberships) in `app/api/v1/users.py`. Instrumented document audit hooks for views, downloads, exports, and retrievals. |
+| **P14-M5** | Frontend Security & Privacy UI | **COMPLETED** | Added "Security & Privacy (Phase 14)" tab to `WorkspaceSettingsModal.tsx` with GDPR Data Portability export button, red-zoned Right to be Forgotten with typed "DELETE" confirmation, and workspace owner audit trail/security incident viewers. Next.js production build verified clean (0 errors). |
+| **P14-M6** | Testing & Security Verification | **COMPLETED** | Authored `apps/api/tests/test_security_and_compliance.py`. Verified prompt injection blocking, agent protection, document audit logging, RBAC permissions (403 for `EDITOR`/`VIEWER`), GDPR data export, and GDPR account purge. All 78 platform tests passing in 6.36s. |
+| **P14-M7** | Git Management & Documentation | **COMPLETED** | Authored `docs/VERITAS_PHASE_14_IMPLEMENTATION_REPORT.md` and updated `docs/PHASE_TRACKER.md`. Local git commits recorded without pushing to remote repository. |
 
 ---
 

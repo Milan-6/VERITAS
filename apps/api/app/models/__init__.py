@@ -18,6 +18,13 @@ from app.models.graph import GraphNode, GraphEdge
 from app.models.learning import FlashcardDeck, Flashcard, Quiz
 from app.models.integration import IntegrationCredential, WebhookSubscription
 from app.models.telemetry import ApiRequestLog, LlmUsageLog
+from app.models.audit import (
+    DocumentAuditLog,
+    SecurityIncidentLog,
+    DocumentAuditAction,
+    SecurityIncidentType,
+    SecurityIncidentSeverity,
+)
 
 __all__ = [
     "Base",
@@ -44,6 +51,11 @@ __all__ = [
     "WebhookSubscription",
     "ApiRequestLog",
     "LlmUsageLog",
+    "DocumentAuditLog",
+    "SecurityIncidentLog",
+    "DocumentAuditAction",
+    "SecurityIncidentType",
+    "SecurityIncidentSeverity",
     "DocumentStatus",
     "JobStatus",
     "ProcessingStage",

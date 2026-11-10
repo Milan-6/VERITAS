@@ -6,6 +6,8 @@ from app.core.database import get_db
 from app.core.security import get_current_user, verify_document_access
 from app.models.user import User
 from app.models.workspace import Workspace
+from app.models.audit import DocumentAuditAction
+from app.services.audit import audit_service
 from app.services.dossier_export import dossier_export_service
 
 logger = logging.getLogger(__name__)
@@ -40,6 +42,14 @@ def export_research_dossier_pdf(
     )
 
     clean_filename = f"VERITAS_Dossier_{doc.id[:8]}.pdf"
+
+    # Phase 14: Document Access Audit Trail (COMP-01)
+    audit_service.log_document_access(
+        document_id=doc.id,
+        action=DocumentAuditAction.EXPORT_PDF.value,
+        workspace_id=tenant_id,
+        user_id=current_user.id,
+    )
 
     # Trigger Webhook Event: dossier.generated
     try:

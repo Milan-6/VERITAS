@@ -24,6 +24,8 @@ import {
   ZoteroSyncSummary,
   WorkspaceUsageSummary,
   WorkspaceActivity,
+  DocumentAuditResponse,
+  SecurityIncidentResponse,
 } from "../types";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
@@ -547,6 +549,29 @@ class ApiClient {
 
   async getWorkspaceActivity(workspaceId: string, limit: number = 50): Promise<WorkspaceActivity> {
     return this.request<WorkspaceActivity>(`/analytics/workspace/${encodeURIComponent(workspaceId)}/activity?limit=${limit}`);
+  }
+
+  // Phase 14: Security, Auditing & Compliance
+  async getWorkspaceAuditLogs(workspaceId: string, limit: number = 50, offset: number = 0): Promise<DocumentAuditResponse> {
+    return this.request<DocumentAuditResponse>(
+      `/analytics/workspace/${encodeURIComponent(workspaceId)}/audit-logs?limit=${limit}&offset=${offset}`
+    );
+  }
+
+  async getWorkspaceSecurityIncidents(workspaceId: string, limit: number = 50, offset: number = 0): Promise<SecurityIncidentResponse> {
+    return this.request<SecurityIncidentResponse>(
+      `/analytics/workspace/${encodeURIComponent(workspaceId)}/security-incidents?limit=${limit}&offset=${offset}`
+    );
+  }
+
+  async exportUserData(): Promise<any> {
+    return this.request<any>("/users/me/export");
+  }
+
+  async deleteUserAccount(): Promise<{ status: string; message: string }> {
+    return this.request<{ status: string; message: string }>("/users/me", {
+      method: "DELETE",
+    });
   }
 }
 

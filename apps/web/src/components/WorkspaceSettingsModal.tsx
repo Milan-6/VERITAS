@@ -26,6 +26,11 @@ import {
   Clock,
   Coins,
   Gauge,
+  ShieldAlert,
+  Download,
+  UserX,
+  FileCheck,
+  History,
 } from "lucide-react";
 import { api } from "../lib/api";
 import {
@@ -35,6 +40,8 @@ import {
   WebhookSubscriptionItem,
   WorkspaceUsageSummary,
   WorkspaceActivity,
+  DocumentAuditItem,
+  SecurityIncidentItem,
 } from "../types";
 
 interface WorkspaceSettingsModalProps {
@@ -52,7 +59,7 @@ export const WorkspaceSettingsModal: React.FC<WorkspaceSettingsModalProps> = ({
   onSelectWorkspace,
   onWorkspacesChanged,
 }) => {
-  const [activeTab, setActiveTab] = useState<"members" | "integrations" | "analytics">("members");
+  const [activeTab, setActiveTab] = useState<"members" | "integrations" | "analytics" | "security">("members");
   const [workspaces, setWorkspaces] = useState<WorkspaceItem[]>([]);
   const [activeDetail, setActiveDetail] = useState<WorkspaceDetail | null>(null);
   const [loading, setLoading] = useState(false);
@@ -87,10 +94,80 @@ export const WorkspaceSettingsModal: React.FC<WorkspaceSettingsModalProps> = ({
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
   const [analyticsError, setAnalyticsError] = useState<string | null>(null);
 
+  // Audit & Security state (Phase 14)
+  const [auditLogs, setAuditLogs] = useState<DocumentAuditItem[]>([]);
+  const [securityIncidents, setSecurityIncidents] = useState<SecurityIncidentItem[]>([]);
+  const [auditLoading, setAuditLoading] = useState(false);
+  const [auditError, setAuditError] = useState<string | null>(null);
+
+  // GDPR data sovereignty state (Phase 14)
+  const [exportingData, setExportingData] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
+  const [deletingAccount, setDeletingAccount] = useState(false);
+
   // Status feedback
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  const fetchAuditAndSecurity = async (wsId: string) => {
+    try {
+      setAuditLoading(true);
+      setAuditError(null);
+      const [auditRes, secRes] = await Promise.all([
+        api.getWorkspaceAuditLogs(wsId),
+        api.getWorkspaceSecurityIncidents(wsId),
+      ]);
+      setAuditLogs(auditRes.items || []);
+      setSecurityIncidents(secRes.items || []);
+    } catch (err: any) {
+      setAuditError(err?.message || "Failed to load audit logs");
+    } finally {
+      setAuditLoading(false);
+    }
+  };
+
+  const handleExportData = async () => {
+    try {
+      setExportingData(true);
+      setError(null);
+      setSuccess(null);
+      const data = await api.exportUserData();
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `veritas_data_export_${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      setSuccess("Your personal data archive was successfully compiled and downloaded.");
+    } catch (err: any) {
+      setError(err?.message || "Failed to export personal data");
+    } finally {
+      setExportingData(false);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    if (deleteConfirmText.trim() !== "DELETE") {
+      setError("Please type 'DELETE' exactly to confirm account deletion.");
+      return;
+    }
+
+    try {
+      setDeletingAccount(true);
+      setError(null);
+      await api.deleteUserAccount();
+      api.setToken(null);
+      alert("Your account and all associated personal research artifacts have been permanently deleted in compliance with GDPR. You will now be redirected to the login screen.");
+      window.location.reload();
+    } catch (err: any) {
+      setError(err?.message || "Failed to delete account");
+      setDeletingAccount(false);
+    }
+  };
 
   const fetchAnalytics = async (wsId: string) => {
     try {
@@ -161,6 +238,9 @@ export const WorkspaceSettingsModal: React.FC<WorkspaceSettingsModalProps> = ({
   useEffect(() => {
     if (isOpen && activeTab === "analytics" && activeDetail && activeDetail.role === "OWNER") {
       fetchAnalytics(activeDetail.id);
+    }
+    if (isOpen && activeTab === "security" && activeDetail && activeDetail.role === "OWNER") {
+      fetchAuditAndSecurity(activeDetail.id);
     }
   }, [activeTab, activeDetail?.id]);
 
@@ -439,6 +519,17 @@ export const WorkspaceSettingsModal: React.FC<WorkspaceSettingsModalProps> = ({
             >
               <BarChart3 className="w-3.5 h-3.5" />
               <span>Analytics & Usage (Phase 13)</span>
+            </button>
+            <button
+              onClick={() => setActiveTab("security")}
+              className={`pb-2.5 text-xs font-semibold flex items-center space-x-1.5 border-b-2 transition-colors ${
+                activeTab === "security"
+                  ? "border-cyan-400 text-cyan-300"
+                  : "border-transparent text-slate-400 hover:text-slate-200"
+              }`}
+            >
+              <ShieldAlert className="w-3.5 h-3.5" />
+              <span>Security & Privacy (Phase 14)</span>
             </button>
           </div>
 
@@ -1053,6 +1144,243 @@ export const WorkspaceSettingsModal: React.FC<WorkspaceSettingsModalProps> = ({
                       <p className="text-xs text-slate-500 italic py-2">
                         No request telemetry logged yet. Endpoints invoked will appear here in real-time.
                       </p>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+
+          {/* TAB 4: SECURITY & COMPLIANCE (Phase 14) */}
+          {activeTab === "security" && activeDetail && (
+            <div className="space-y-6">
+              {/* Header Bar */}
+              <div className="flex items-center justify-between bg-slate-900/60 border border-slate-800 p-3.5 rounded-xl">
+                <div>
+                  <h3 className="text-xs font-semibold text-white uppercase tracking-wider flex items-center space-x-2">
+                    <ShieldAlert className="w-4 h-4 text-cyan-400" />
+                    <span>Security, Auditing & GDPR Data Sovereignty</span>
+                  </h3>
+                  <p className="text-[11px] text-slate-400 mt-0.5">
+                    Immutable access logs, prompt injection incident reports, and user privacy rights for {activeDetail.name}.
+                  </p>
+                </div>
+                {activeDetail.role === "OWNER" && (
+                  <button
+                    onClick={() => fetchAuditAndSecurity(activeDetail.id)}
+                    disabled={auditLoading}
+                    className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium border border-slate-700 transition-colors disabled:opacity-50"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${auditLoading ? "animate-spin text-cyan-400" : ""}`} />
+                    <span>Refresh Logs</span>
+                  </button>
+                )}
+              </div>
+
+              {auditError && (
+                <div className="p-3 rounded-lg bg-rose-950/40 border border-rose-800/60 text-xs text-rose-300 flex items-center space-x-2">
+                  <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+                  <span>{auditError}</span>
+                </div>
+              )}
+
+              {/* GDPR Data Sovereignty Controls */}
+              <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-4 space-y-4">
+                <h4 className="text-xs font-semibold text-slate-300 uppercase tracking-wider flex items-center space-x-2">
+                  <FileCheck className="w-3.5 h-3.5 text-cyan-400" />
+                  <span>Data Sovereignty & User Rights (GDPR)</span>
+                </h4>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {/* Export Card */}
+                  <div className="p-3.5 rounded-lg bg-slate-950/70 border border-slate-800 flex flex-col justify-between">
+                    <div>
+                      <div className="flex items-center space-x-2 text-xs font-semibold text-white mb-1">
+                        <Download className="w-3.5 h-3.5 text-cyan-400" />
+                        <span>Data Portability (Article 20)</span>
+                      </div>
+                      <p className="text-[11px] text-slate-400 leading-relaxed">
+                        Export an immutable, machine-readable JSON archive containing your research profile, workspace associations, document metadata, synthesis points, chat logs, and study decks.
+                      </p>
+                    </div>
+                    <div className="mt-3">
+                      <button
+                        onClick={handleExportData}
+                        disabled={exportingData}
+                        className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium border border-slate-700 flex items-center space-x-1.5 transition-colors disabled:opacity-50"
+                      >
+                        <Download className="w-3.5 h-3.5 text-cyan-400" />
+                        <span>{exportingData ? "Compiling Archive..." : "Download My Data Archive"}</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Right to be Forgotten Card */}
+                  <div className="p-3.5 rounded-lg bg-rose-950/20 border border-rose-900/50 flex flex-col justify-between">
+                    <div>
+                      <div className="flex items-center space-x-2 text-xs font-semibold text-rose-300 mb-1">
+                        <UserX className="w-3.5 h-3.5 text-rose-400" />
+                        <span>Right to be Forgotten (Article 17)</span>
+                      </div>
+                      <p className="text-[11px] text-rose-200/80 leading-relaxed">
+                        Permanently purge your account, uploaded PDFs, Qdrant vectors, and owned research workspaces. Shared workspace memberships will be cleanly unlinked.
+                      </p>
+                    </div>
+                    <div className="mt-3 space-y-2">
+                      <input
+                        type="text"
+                        value={deleteConfirmText}
+                        onChange={(e) => setDeleteConfirmText(e.target.value)}
+                        placeholder='Type "DELETE" to confirm'
+                        className="w-full px-2.5 py-1.5 bg-slate-950 border border-rose-900/60 rounded text-xs text-rose-200 font-mono focus:outline-none focus:border-rose-500 placeholder:text-rose-900"
+                      />
+                      <button
+                        onClick={handleDeleteAccount}
+                        disabled={deletingAccount || deleteConfirmText.trim() !== "DELETE"}
+                        className="w-full px-3 py-1.5 rounded-lg bg-rose-900/70 hover:bg-rose-800 disabled:opacity-40 text-rose-100 text-xs font-semibold flex items-center justify-center space-x-1.5 transition-colors"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        <span>{deletingAccount ? "Purging Account..." : "Permanently Delete Account"}</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Workspace Owner Audit Log Section */}
+              {activeDetail.role !== "OWNER" ? (
+                <div className="p-4 rounded-xl bg-slate-900/40 border border-slate-800 flex items-start space-x-3 text-xs text-slate-400">
+                  <Lock className="w-4 h-4 text-slate-500 shrink-0 mt-0.5" />
+                  <div>
+                    <h5 className="font-semibold text-slate-300">Audit Logs Restricted</h5>
+                    <p className="mt-0.5 text-slate-500">
+                      Document access trails and security incident monitoring are visible exclusively to the workspace Owner.
+                      Your role is <span className="font-mono uppercase font-bold text-slate-300">[{activeDetail.role}]</span>.
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  {/* Document Access Audit Trail */}
+                  <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <h4 className="text-xs font-semibold text-slate-300 uppercase tracking-wider flex items-center space-x-2">
+                        <History className="w-3.5 h-3.5 text-cyan-400" />
+                        <span>Immutable Document Audit Trail</span>
+                      </h4>
+                      <span className="text-[10px] text-slate-500 font-mono">Latest {auditLogs.length} events</span>
+                    </div>
+
+                    {auditLogs.length > 0 ? (
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-left text-xs border-collapse">
+                          <thead>
+                            <tr className="border-b border-slate-800 text-[10px] uppercase text-slate-500 tracking-wider">
+                              <th className="py-2 px-2.5 font-semibold">Action</th>
+                              <th className="py-2 px-2.5 font-semibold">Document</th>
+                              <th className="py-2 px-2.5 font-semibold">IP Address</th>
+                              <th className="py-2 px-2.5 font-semibold">Timestamp</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-800/60 font-mono text-[11px]">
+                            {auditLogs.slice(0, 15).map((log) => (
+                              <tr key={log.id} className="hover:bg-slate-800/30 transition-colors">
+                                <td className="py-2 px-2.5">
+                                  <span
+                                    className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                                      log.action === "VIEW"
+                                        ? "bg-blue-950 text-blue-400 border border-blue-800/60"
+                                        : log.action === "DOWNLOAD"
+                                        ? "bg-emerald-950 text-emerald-400 border border-emerald-800/60"
+                                        : log.action === "EXPORT_PDF"
+                                        ? "bg-purple-950 text-purple-400 border border-purple-800/60"
+                                        : "bg-cyan-950 text-cyan-400 border border-cyan-800/60"
+                                    }`}
+                                  >
+                                    {log.action}
+                                  </span>
+                                </td>
+                                <td className="py-2 px-2.5 text-slate-300 truncate max-w-[220px]" title={log.document_title}>
+                                  {log.document_title}
+                                </td>
+                                <td className="py-2 px-2.5 text-slate-400 text-[10px]">
+                                  {log.ip_address || "127.0.0.1"}
+                                </td>
+                                <td className="py-2 px-2.5 text-slate-500 text-[10px]">
+                                  {new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    ) : (
+                      <p className="text-xs text-slate-500 italic py-2">
+                        No document access records logged yet. Document views, downloads, and exports will appear here automatically.
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Security Incident Log */}
+                  <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <h4 className="text-xs font-semibold text-slate-300 uppercase tracking-wider flex items-center space-x-2">
+                        <ShieldAlert className="w-3.5 h-3.5 text-rose-400" />
+                        <span>Security Incident Logs</span>
+                      </h4>
+                      <span className="text-[10px] text-slate-500 font-mono">{securityIncidents.length} recorded</span>
+                    </div>
+
+                    {securityIncidents.length > 0 ? (
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-left text-xs border-collapse">
+                          <thead>
+                            <tr className="border-b border-slate-800 text-[10px] uppercase text-slate-500 tracking-wider">
+                              <th className="py-2 px-2.5 font-semibold">Incident Type</th>
+                              <th className="py-2 px-2.5 font-semibold">Severity</th>
+                              <th className="py-2 px-2.5 font-semibold">Details / Rule</th>
+                              <th className="py-2 px-2.5 font-semibold">IP Address</th>
+                              <th className="py-2 px-2.5 font-semibold">Timestamp</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-800/60 font-mono text-[11px]">
+                            {securityIncidents.slice(0, 15).map((inc) => (
+                              <tr key={inc.id} className="hover:bg-slate-800/30 transition-colors">
+                                <td className="py-2 px-2.5">
+                                  <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-950 text-rose-400 border border-rose-800/60">
+                                    {inc.incident_type}
+                                  </span>
+                                </td>
+                                <td className="py-2 px-2.5">
+                                  <span
+                                    className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${
+                                      inc.severity === "HIGH" || inc.severity === "CRITICAL"
+                                        ? "bg-red-950 text-red-300 border border-red-800"
+                                        : "bg-amber-950 text-amber-300 border border-amber-800"
+                                    }`}
+                                  >
+                                    {inc.severity}
+                                  </span>
+                                </td>
+                                <td className="py-2 px-2.5 text-slate-300 truncate max-w-[240px]">
+                                  {inc.details?.rule ? `${inc.details.rule}: "${inc.details.snippet || ''}"` : JSON.stringify(inc.details)}
+                                </td>
+                                <td className="py-2 px-2.5 text-slate-400 text-[10px]">
+                                  {inc.ip_address || "127.0.0.1"}
+                                </td>
+                                <td className="py-2 px-2.5 text-slate-500 text-[10px]">
+                                  {new Date(inc.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    ) : (
+                      <div className="p-3 rounded-lg bg-emerald-950/30 border border-emerald-800/50 text-xs text-emerald-300 flex items-center space-x-2">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                        <span>Zero security incidents detected. Prompt injection heuristic scanner and SSRF filters are active.</span>
+                      </div>
                     )}
                   </div>
                 </>

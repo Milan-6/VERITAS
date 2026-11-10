@@ -467,6 +467,42 @@ export interface WorkspaceActivity {
   recent_activity: ActivityRecord[];
 }
 
+// Phase 14: Security, Auditing & Compliance
+export interface DocumentAuditItem {
+  id: string;
+  document_id: string;
+  document_title: string;
+  workspace_id?: string | null;
+  user_id?: string | null;
+  action: string;
+  ip_address?: string | null;
+  timestamp: string;
+}
+
+export interface SecurityIncidentItem {
+  id: string;
+  workspace_id?: string | null;
+  user_id?: string | null;
+  incident_type: string;
+  severity: string;
+  details: Record<string, any>;
+  ip_address?: string | null;
+  timestamp: string;
+}
+
+export interface DocumentAuditResponse {
+  workspace_id: string;
+  total: number;
+  items: DocumentAuditItem[];
+}
+
+export interface SecurityIncidentResponse {
+  workspace_id: string;
+  total: number;
+  items: SecurityIncidentItem[];
+}
+
+
 
 
 

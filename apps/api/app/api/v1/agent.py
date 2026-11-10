@@ -10,6 +10,7 @@ from app.core.database import get_db
 from app.core.security import get_current_user
 from app.models.user import User
 from app.models.workspace import Workspace
+from app.services.prompt_security import prompt_security_service
 
 logger = logging.getLogger(__name__)
 
@@ -43,6 +44,14 @@ def execute_agent_task(
     """
     user_ws = db.query(Workspace).filter(Workspace.owner_id == current_user.id).first()
     tenant_id = user_ws.id if user_ws else current_user.id
+
+    # Phase 14: Prompt Injection & Jailbreak Defense (SEC-16)
+    prompt_security_service.validate_prompt_or_raise(
+        text=payload.objective,
+        workspace_id=tenant_id,
+        user_id=current_user.id,
+        endpoint_context="agent",
+    )
 
     workflow = AgentWorkflow(
         objective=payload.objective,

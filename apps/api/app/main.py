@@ -16,6 +16,7 @@ from app.api.v1.workspaces import router as workspaces_router
 from app.api.v1.export import router as export_router
 from app.api.v1.integrations import router as integrations_router
 from app.api.v1.analytics import router as analytics_router
+from app.api.v1.users import router as users_router
 from app.middleware.telemetry import RateLimitAndTelemetryMiddleware
 
 # Initialize tables
@@ -23,7 +24,7 @@ Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
     title="VERITAS API",
-    description="VERITAS: Research Intelligence. Grounded in Truth. Core Ingestion, Extraction, Hybrid Retrieval, Evidence Verification, Literature Analysis, Academic Discovery, Knowledge Graph, Autonomous Agent, Learning Productivity, Multi-User Collaboration, Advanced Integrations & Platform Analytics.",
+    description="VERITAS: Research Intelligence. Grounded in Truth. Core Ingestion, Extraction, Hybrid Retrieval, Evidence Verification, Literature Analysis, Academic Discovery, Knowledge Graph, Autonomous Agent, Learning Productivity, Multi-User Collaboration, Advanced Integrations, Platform Analytics & GDPR Compliance.",
     version="1.0.0",
     docs_url="/docs",
     redoc_url="/redoc",
@@ -44,6 +45,7 @@ app.add_middleware(
 
 # Include v1 routers
 app.include_router(auth_router, prefix=settings.API_V1_PREFIX)
+app.include_router(users_router, prefix=settings.API_V1_PREFIX)
 app.include_router(documents_router, prefix=settings.API_V1_PREFIX)
 app.include_router(retrieval_router, prefix=settings.API_V1_PREFIX)
 app.include_router(chat_router, prefix=settings.API_V1_PREFIX)
@@ -66,5 +68,5 @@ def health_check():
         "product": settings.PROJECT_NAME,
         "tagline": settings.TAGLINE,
         "version": "1.0.0",
-        "phase": "Phase 13 - Platform Analytics & Telemetry",
+        "phase": "Phase 14 - Security, Auditing & Compliance",
     }

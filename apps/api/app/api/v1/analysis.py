@@ -10,6 +10,7 @@ from app.models.document import Document
 from app.schemas.analysis import PaperSynthesis, LiteratureMatrix, MatrixRequest
 from app.services.academic_extraction import academic_extraction_service
 from app.services.literature_matrix import literature_matrix_service
+from app.services.prompt_security import prompt_security_service
 
 logger = logging.getLogger(__name__)
 
@@ -57,6 +58,15 @@ def generate_literature_matrix(
     """
     user_ws = db.query(Workspace).filter(Workspace.owner_id == current_user.id).first()
     tenant_id = user_ws.id if user_ws else current_user.id
+
+    # Phase 14: Prompt Injection & Jailbreak Defense (SEC-16)
+    if payload.topic_query:
+        prompt_security_service.validate_prompt_or_raise(
+            text=payload.topic_query,
+            workspace_id=tenant_id,
+            user_id=current_user.id,
+            endpoint_context="analysis_matrix",
+        )
 
     matrix = literature_matrix_service.generate_matrix(
         document_ids=payload.document_ids,

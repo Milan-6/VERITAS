@@ -7,7 +7,9 @@ from app.core.security import get_current_user
 from app.models.user import User
 from app.models.workspace import Workspace, WorkspaceMember, WorkspaceRole
 from app.schemas.analytics import WorkspaceUsageSummaryOut, WorkspaceActivityOut
+from app.schemas.audit import DocumentAuditListResponse, SecurityIncidentListResponse
 from app.services.telemetry import telemetry_service
+from app.services.audit import audit_service
 
 logger = logging.getLogger(__name__)
 
@@ -85,3 +87,65 @@ def get_workspace_activity(
     """
     verify_workspace_owner(workspace_id, current_user, db)
     return telemetry_service.get_workspace_activity(workspace_id, db, limit=limit)
+
+
+@router.get(
+    "/workspace/{workspace_id}/audit-logs",
+    response_model=DocumentAuditListResponse,
+    summary="Get append-only document access audit trail for a workspace",
+)
+def get_workspace_audit_logs(
+    workspace_id: str,
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+    document_id: str = Query(None),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Retrieves the append-only document audit trail (views, downloads, exports)
+    for the target workspace. Restricted to OWNER role.
+    """
+    verify_workspace_owner(workspace_id, current_user, db)
+    logs = audit_service.get_document_audit_logs(
+        workspace_id=workspace_id,
+        db=db,
+        limit=limit,
+        offset=offset,
+        document_id=document_id,
+    )
+    return DocumentAuditListResponse(
+        workspace_id=workspace_id,
+        total=len(logs),
+        items=logs,
+    )
+
+
+@router.get(
+    "/workspace/{workspace_id}/security-incidents",
+    response_model=SecurityIncidentListResponse,
+    summary="Get security incident logs (prompt injection, SSRF, violations) for a workspace",
+)
+def get_workspace_security_incidents(
+    workspace_id: str,
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Retrieves the immutable security incident logs for the target workspace.
+    Restricted to OWNER role.
+    """
+    verify_workspace_owner(workspace_id, current_user, db)
+    incidents = audit_service.get_security_incident_logs(
+        workspace_id=workspace_id,
+        db=db,
+        limit=limit,
+        offset=offset,
+    )
+    return SecurityIncidentListResponse(
+        workspace_id=workspace_id,
+        total=len(incidents),
+        items=incidents,
+    )

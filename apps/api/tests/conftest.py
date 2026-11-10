@@ -56,6 +56,10 @@ job_manager.session_factory = TestingSessionLocal
 from app.services.telemetry import telemetry_service
 telemetry_service.session_factory = TestingSessionLocal
 
+# Wire audit_service to use test DB session factory (Phase 14)
+from app.services.audit import audit_service
+audit_service.session_factory = TestingSessionLocal
+
 # In tests, avoid offline Redis socket connection attempts
 from app.core.rate_limiter import rate_limiter
 rate_limiter._redis_failed = True

@@ -8,6 +8,8 @@ from app.models.user import User
 from app.models.workspace import Workspace
 from app.schemas.retrieval import SearchRequest, SearchResponse, SearchChunkResult
 from app.services.retrieval import retrieval_service
+from app.services.audit import audit_service
+from app.models.audit import DocumentAuditAction
 
 logger = logging.getLogger(__name__)
 
@@ -61,6 +63,15 @@ def hybrid_search(
             )
             for c in chunks
         ]
+
+        # Phase 14: Document Audit Logging (COMP-01)
+        if request.document_id:
+            audit_service.log_document_access(
+                document_id=request.document_id,
+                action=DocumentAuditAction.RETRIEVAL.value,
+                workspace_id=tenant_id,
+                user_id=current_user.id,
+            )
 
         return SearchResponse(
             query=request.query,

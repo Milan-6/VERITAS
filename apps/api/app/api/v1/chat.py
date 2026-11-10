@@ -20,6 +20,7 @@ from app.schemas.chat import (
 from app.services.retrieval import retrieval_service
 from app.services.llm import llm_service
 from app.services.verification import evidence_verifier
+from app.services.prompt_security import prompt_security_service
 
 logger = logging.getLogger(__name__)
 
@@ -178,6 +179,14 @@ def send_chat_message(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Message content cannot be empty.")
 
     session = verify_session_access(session_id, current_user, db)
+
+    # Phase 14: Prompt Injection & Jailbreak Defense (SEC-16)
+    prompt_security_service.validate_prompt_or_raise(
+        text=content,
+        workspace_id=session.workspace_id,
+        user_id=current_user.id,
+        endpoint_context="chat",
+    )
 
     # 1. Persist User Message
     user_msg = ChatMessage(
