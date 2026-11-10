@@ -24,14 +24,19 @@ pnpm-debug.log*
 
 # Environment & Secrets
 .env
+.env.*
 .env.local
 .env.*.local
 *.pem
 *.key
 
-# Data & Uploads
+# Data, Volumes & Uploads
 data/
 uploads/
+postgres_data/
+redis_data/
+qdrant_data/
+veritas_uploads/
 *.db
 *.sqlite
 *.sqlite3

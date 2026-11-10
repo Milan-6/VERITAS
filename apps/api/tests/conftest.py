@@ -14,6 +14,7 @@ API_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(API_ROOT))
 
 # Force synchronous testing & offline deterministic embeddings
+os.environ["DATABASE_URL"] = "sqlite:///:memory:"
 os.environ["CELERY_TASK_ALWAYS_EAGER"] = "true"
 os.environ["QDRANT_IN_MEMORY"] = "true"
 os.environ["QDRANT_TIMEOUT"] = "5.0"
@@ -21,6 +22,7 @@ os.environ["GEMINI_API_KEY"] = ""
 os.environ["GOOGLE_API_KEY"] = ""
 
 from app.core.config import settings
+settings.DATABASE_URL = "sqlite:///:memory:"
 settings.CELERY_TASK_ALWAYS_EAGER = True
 settings.QDRANT_IN_MEMORY = True
 settings.QDRANT_TIMEOUT = 5.0
