@@ -1,44 +1,174 @@
 version: "3.8"
 
 services:
-  db:
-    image: postgres:16-alpine
-    container_name: veritas-postgres
+  # ----------------------------------------------------------------------------
+  # PostgreSQL 15 - Primary Relational Database
+  # ----------------------------------------------------------------------------
+  postgres:
+    image: postgres:15-alpine
+    container_name: veritas_postgres
     restart: unless-stopped
     environment:
-      POSTGRES_USER: veritas_user
-      POSTGRES_PASSWORD: veritas_password
-      POSTGRES_DB: veritas
+      POSTGRES_USER: ${POSTGRES_USER:-veritas_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-veritas_password}
+      POSTGRES_DB: ${POSTGRES_DB:-veritas_db}
     ports:
-      - "5432:5432"
+      - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U veritas_user -d veritas"]
-      interval: 10s
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-veritas_user} -d ${POSTGRES_DB:-veritas_db}"]
+      interval: 5s
       timeout: 5s
       retries: 5
+    networks:
+      - veritas_net
 
+  # ----------------------------------------------------------------------------
+  # Redis 7 - Cache, Rate Limiting & Celery Message Broker
+  # ----------------------------------------------------------------------------
   redis:
     image: redis:7-alpine
-    container_name: veritas-redis
+    container_name: veritas_redis
     restart: unless-stopped
+    command: redis-server --appendonly yes
     ports:
-      - "6379:6379"
+      - "${REDIS_PORT:-6379}:6379"
     volumes:
       - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - veritas_net
 
+  # ----------------------------------------------------------------------------
+  # Qdrant - High-Performance Vector Database
+  # ----------------------------------------------------------------------------
   qdrant:
-    image: qdrant/qdrant:v1.9.0
-    container_name: veritas-qdrant
+    image: qdrant/qdrant:v1.8.4
+    container_name: veritas_qdrant
     restart: unless-stopped
     ports:
-      - "6333:6333"
+      - "${QDRANT_PORT:-6333}:6333"
       - "6334:6334"
     volumes:
       - qdrant_data:/qdrant/storage
+    environment:
+      QDRANT__SERVICE__HTTP_PORT: 6333
+      QDRANT__SERVICE__GRPC_PORT: 6334
+    networks:
+      - veritas_net
 
+  # ----------------------------------------------------------------------------
+  # FastAPI Backend Service (Core Research API)
+  # ----------------------------------------------------------------------------
+  api:
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile
+    container_name: veritas_api
+    restart: unless-stopped
+    command: ["api"]
+    ports:
+      - "${API_PORT:-8000}:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      qdrant:
+        condition: service_started
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-veritas_user}:${POSTGRES_PASSWORD:-veritas_password}@postgres:5432/${POSTGRES_DB:-veritas_db}
+      - REDIS_URL=redis://redis:6379/0
+      - QDRANT_URL=http://qdrant:6333
+      - QDRANT_HOST=qdrant
+      - QDRANT_PORT=6333
+      - SECRET_KEY=${SECRET_KEY:-veritas-secure-grounded-truth-dev-key-change-in-prod-3829472947}
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - VERITAS_STORAGE_DIR=/app/uploads/documents
+      - RATE_LIMIT_ENABLED=${RATE_LIMIT_ENABLED:-true}
+      - RATE_LIMIT_DEFAULT_REQUESTS=${RATE_LIMIT_DEFAULT_REQUESTS:-120}
+      - RATE_LIMIT_DEFAULT_WINDOW=${RATE_LIMIT_DEFAULT_WINDOW:-60}
+      - CELERY_TASK_ALWAYS_EAGER=false
+    volumes:
+      - veritas_uploads:/app/uploads/documents
+    networks:
+      - veritas_net
+
+  # ----------------------------------------------------------------------------
+  # Celery Background Worker (Asynchronous Processing & Webhook Delivery)
+  # ----------------------------------------------------------------------------
+  worker:
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile
+    container_name: veritas_worker
+    restart: unless-stopped
+    command: ["worker"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      qdrant:
+        condition: service_started
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-veritas_user}:${POSTGRES_PASSWORD:-veritas_password}@postgres:5432/${POSTGRES_DB:-veritas_db}
+      - REDIS_URL=redis://redis:6379/0
+      - QDRANT_URL=http://qdrant:6333
+      - QDRANT_HOST=qdrant
+      - QDRANT_PORT=6333
+      - SECRET_KEY=${SECRET_KEY:-veritas-secure-grounded-truth-dev-key-change-in-prod-3829472947}
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - VERITAS_STORAGE_DIR=/app/uploads/documents
+      - CELERY_LOG_LEVEL=${CELERY_LOG_LEVEL:-info}
+      - CELERY_CONCURRENCY=${CELERY_CONCURRENCY:-4}
+    volumes:
+      - veritas_uploads:/app/uploads/documents
+    networks:
+      - veritas_net
+
+  # ----------------------------------------------------------------------------
+  # Next.js 14 Frontend Web Application
+  # ----------------------------------------------------------------------------
+  web:
+    build:
+      context: ./apps/web
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000/api/v1}
+    container_name: veritas_web
+    restart: unless-stopped
+    ports:
+      - "${WEB_PORT:-3000}:3000"
+    depends_on:
+      - api
+    environment:
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:8000/api/v1}
+    networks:
+      - veritas_net
+
+# ------------------------------------------------------------------------------
+# Persistent Docker Volumes
+# ------------------------------------------------------------------------------
 volumes:
   postgres_data:
+    name: veritas_postgres_data
   redis_data:
+    name: veritas_redis_data
   qdrant_data:
+    name: veritas_qdrant_data
+  veritas_uploads:
+    name: veritas_uploads_data
+
+# ------------------------------------------------------------------------------
+# Custom Bridge Network
+# ------------------------------------------------------------------------------
+networks:
+  veritas_net:
+    name: veritas_network
+    driver: bridge
