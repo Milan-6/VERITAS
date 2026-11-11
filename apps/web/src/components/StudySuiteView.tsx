@@ -32,9 +32,18 @@ export const StudySuiteView: React.FC<StudySuiteViewProps> = ({
   initialDocumentId,
 }) => {
   const completedDocs = documents.filter((d) => d.status === "COMPLETED");
+  const fallbackDocId = completedDocs[0]?.id || documents[0]?.id || "";
   const [selectedDocId, setSelectedDocId] = useState<string>(
-    initialDocumentId || (completedDocs[0]?.id || "")
+    initialDocumentId || fallbackDocId
   );
+
+  useEffect(() => {
+    if (initialDocumentId) {
+      setSelectedDocId(initialDocumentId);
+    } else if (!selectedDocId && fallbackDocId) {
+      setSelectedDocId(fallbackDocId);
+    }
+  }, [initialDocumentId, fallbackDocId]);
 
   const [activeMode, setActiveMode] = useState<"flashcards" | "quiz">("flashcards");
 

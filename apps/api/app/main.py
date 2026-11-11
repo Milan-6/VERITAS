@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.core.database import Base, engine
 from app.api.v1.auth import router as auth_router
-from app.api.v1.documents import router as documents_router
+from app.api.v1.documents import router as documents_router, tree_router as document_tree_router
 from app.api.v1.retrieval import router as retrieval_router
 from app.api.v1.chat import router as chat_router
 from app.api.v1.analysis import router as analysis_router
@@ -47,6 +47,7 @@ app.add_middleware(
 app.include_router(auth_router, prefix=settings.API_V1_PREFIX)
 app.include_router(users_router, prefix=settings.API_V1_PREFIX)
 app.include_router(documents_router, prefix=settings.API_V1_PREFIX)
+app.include_router(document_tree_router, prefix=settings.API_V1_PREFIX)
 app.include_router(retrieval_router, prefix=settings.API_V1_PREFIX)
 app.include_router(chat_router, prefix=settings.API_V1_PREFIX)
 app.include_router(analysis_router, prefix=settings.API_V1_PREFIX)

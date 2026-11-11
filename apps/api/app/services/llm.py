@@ -77,7 +77,7 @@ class GeminiLLMProvider(BaseLLMProvider):
         self.temperature = temperature
         self.base_url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}"
 
-    def _call_with_retry(self, url: str, json_data: dict, max_retries: int = 3, timeout: float = 15.0) -> dict:
+    def _call_with_retry(self, url: str, json_data: dict, max_retries: int = 3, timeout: float = 30.0) -> dict:
         for attempt in range(max_retries):
             try:
                 with httpx.Client(timeout=timeout) as client:
@@ -141,7 +141,14 @@ class GeminiLLMProvider(BaseLLMProvider):
         }
 
         url = f"{self.base_url}:generateContent"
-        data = self._call_with_retry(url, payload)
+        try:
+            data = self._call_with_retry(url, payload)
+        except Exception as e:
+            logger.warning(
+                f"Gemini LLM call failed ({e}). Falling back to DeterministicChatProvider."
+            )
+            fallback = DeterministicChatProvider()
+            return fallback.generate_response(query, context_chunks, chat_history)
 
         candidates = data.get("candidates", [])
         if not candidates:

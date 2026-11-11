@@ -1,6 +1,7 @@
 import {
   DocumentItem,
   DocumentDetail,
+  DocumentUploadResponse,
   DocumentProcessingJob,
   User,
   ChatSession,
@@ -28,7 +29,7 @@ import {
   SecurityIncidentResponse,
 } from "../types";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "/api/v1";
 
 class ApiClient {
   private token: string | null = null;
@@ -125,7 +126,7 @@ class ApiClient {
   async uploadDocument(
     file: File,
     onProgress?: (pct: number) => void
-  ): Promise<{ document: DocumentItem; job: DocumentProcessingJob }> {
+  ): Promise<DocumentUploadResponse> {
     const formData = new FormData();
     formData.append("file", file);
 
@@ -179,9 +180,12 @@ class ApiClient {
     });
   }
 
-  async listDocuments(status?: string): Promise<DocumentItem[]> {
-    const query = status ? `?status=${encodeURIComponent(status)}` : "";
-    return this.request<DocumentItem[]>(`/documents${query}`);
+  async listDocuments(workspaceId?: string, status?: string): Promise<DocumentItem[]> {
+    const params = new URLSearchParams();
+    if (workspaceId) params.append("workspace_id", workspaceId);
+    if (status) params.append("status", status);
+    const queryString = params.toString() ? `?${params.toString()}` : "";
+    return this.request<DocumentItem[]>(`/documents${queryString}`);
   }
 
   async getDocumentDetail(id: string): Promise<DocumentDetail> {
@@ -488,6 +492,11 @@ class ApiClient {
     a.click();
     window.URL.revokeObjectURL(url);
     document.body.removeChild(a);
+  }
+
+  async getDocumentTree(documentId?: string): Promise<{ nodes: any[]; links: any[] }> {
+    const q = documentId ? `?document_id=${encodeURIComponent(documentId)}` : "";
+    return this.request<{ nodes: any[]; links: any[] }>(`/document/tree${q}`);
   }
 
   // Phase 12: Reference Managers & Advanced Integrations

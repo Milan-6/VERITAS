@@ -94,6 +94,20 @@ export interface DocumentItem {
   latest_job?: DocumentProcessingJob | null;
 }
 
+export interface DocumentUploadResponse {
+  document: DocumentItem;
+  job: DocumentProcessingJob;
+  message: string;
+  document_id?: string;
+  filename?: string;
+  graph?: {
+    nodes: any[];
+    links: any[];
+  };
+  hierarchy?: any[];
+  evidence?: any[];
+}
+
 export interface DocumentDetail extends DocumentItem {
   extracted_pages: ExtractedPage[];
   extracted_sections: ExtractedSection[];
@@ -127,6 +141,8 @@ export interface Citation {
   section_title: string;
   chunk_id: string;
   score?: number | null;
+  source_excerpt?: string | null;
+  chunk_text?: string | null;
 }
 
 export interface VerifiedClaim {

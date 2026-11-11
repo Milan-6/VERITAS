@@ -53,7 +53,7 @@ class GeminiEmbeddingProvider(BaseEmbeddingProvider):
         self.model = model
         self.base_url = f"https://generativelanguage.googleapis.com/v1beta/{model}"
 
-    def _call_with_retry(self, url: str, json_data: dict, max_retries: int = 4, timeout: float = 5.0) -> dict:
+    def _call_with_retry(self, url: str, json_data: dict, max_retries: int = 5, timeout: float = 30.0) -> dict:
         for attempt in range(max_retries):
             try:
                 with httpx.Client(timeout=timeout) as client:
@@ -65,7 +65,7 @@ class GeminiEmbeddingProvider(BaseEmbeddingProvider):
 
                     if resp.status_code == 429:
                         # Rate limit: Exponential backoff with jitter
-                        wait_seconds = (2 ** attempt) * 0.5
+                        wait_seconds = max(2.0, (2 ** attempt) * 1.5)
                         logger.warning(f"Gemini API rate limit (429). Retrying in {wait_seconds:.2f}s...")
                         time.sleep(wait_seconds)
                         continue
@@ -74,7 +74,7 @@ class GeminiEmbeddingProvider(BaseEmbeddingProvider):
                     return resp.json()
 
             except (httpx.TimeoutException, httpx.NetworkError) as e:
-                wait_seconds = (2 ** attempt) * 0.5
+                wait_seconds = (2 ** attempt) * 1.0
                 logger.warning(f"Network error on attempt {attempt + 1}: {e}. Retrying in {wait_seconds:.2f}s...")
                 time.sleep(wait_seconds)
             except Exception as e:
@@ -84,23 +84,60 @@ class GeminiEmbeddingProvider(BaseEmbeddingProvider):
         raise RuntimeError(f"Gemini embedding failed after {max_retries} retries.")
 
     def embed_text(self, text: str) -> List[float]:
-        payload = {
-            "model": self.model,
-            "content": {"parts": [{"text": text}]}
-        }
-        res = self._call_with_retry(f"{self.base_url}:embedContent", payload)
-        embedding_values = res.get("embedding", {}).get("values", [])
-        if not embedding_values:
-            raise ValueError("Empty embedding received from Gemini API")
-        return embedding_values
+        try:
+            payload = {
+                "model": self.model,
+                "content": {"parts": [{"text": text}]},
+                "outputDimensionality": self.dimension,
+            }
+            res = self._call_with_retry(f"{self.base_url}:embedContent", payload)
+            embedding_values = res.get("embedding", {}).get("values", [])
+            if not embedding_values:
+                raise ValueError("Empty embedding received from Gemini API")
+            return embedding_values
+        except Exception as e:
+            logger.warning(f"Gemini single embed failed ({e}), falling back to deterministic dense vector.")
+            fallback = DeterministicDenseEmbeddingProvider(dimension=self.dimension)
+            return fallback.embed_text(text)
 
     def embed_batch(self, texts: List[str]) -> List[List[float]]:
-        # Google batchEmbedContents
-        requests = [{"model": self.model, "content": {"parts": [{"text": t}]}} for t in texts]
-        payload = {"requests": requests}
-        res = self._call_with_retry(f"{self.base_url}:batchEmbedContents", payload)
-        embeddings = res.get("embeddings", [])
-        return [e.get("values", []) for e in embeddings]
+        # Google batchEmbedContents allows at most 100 requests per call.
+        # Use sub-batches of 50 to avoid quota spikes and 400/429 errors.
+        sub_batch_size = 50
+        all_embeddings: List[List[float]] = []
+
+        try:
+            for i in range(0, len(texts), sub_batch_size):
+                chunk = texts[i : i + sub_batch_size]
+                requests = [
+                    {
+                        "model": self.model,
+                        "content": {"parts": [{"text": t}]},
+                        "outputDimensionality": self.dimension,
+                    }
+                    for t in chunk
+                ]
+                payload = {"requests": requests}
+                res = self._call_with_retry(f"{self.base_url}:batchEmbedContents", payload)
+                embeddings = res.get("embeddings", [])
+                for e in embeddings:
+                    all_embeddings.append(e.get("values", []))
+                
+                # Sleep between sub-batches to respect free-tier RPM/TPM quotas
+                if i + sub_batch_size < len(texts):
+                    time.sleep(1.0)
+
+            return all_embeddings
+        except Exception as e:
+            logger.warning(
+                f"Gemini batch embedding encountered error: {e}. "
+                "Engaging Deterministic Dense Embedding Provider for remaining vectors."
+            )
+            fallback = DeterministicDenseEmbeddingProvider(dimension=self.dimension)
+            remaining_texts = texts[len(all_embeddings):]
+            fallback_vectors = fallback.embed_batch(remaining_texts)
+            all_embeddings.extend(fallback_vectors)
+            return all_embeddings
 
 
 class DeterministicDenseEmbeddingProvider(BaseEmbeddingProvider):

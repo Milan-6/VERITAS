@@ -1,39 +1,36 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
-import { Header } from "../components/Header";
-import { DocumentList } from "../components/DocumentList";
+import dynamic from "next/dynamic";
+import { Header, NavTab } from "../components/Header";
+import { DashboardView } from "../components/DashboardView";
+import { DocumentHubView } from "../components/DocumentHubView";
+import { ResearchStudioView } from "../components/ResearchStudioView";
+import { AdaptiveStudySuite } from "../components/AdaptiveStudySuite";
 import { UploadModal } from "../components/UploadModal";
 import { DocumentDetailView } from "../components/DocumentDetailView";
 import { AuthModal } from "../components/AuthModal";
-import { ChatInterface } from "../components/ChatInterface";
-import { LiteratureMatrixView } from "../components/LiteratureMatrixView";
-import { GlobalDiscoveryView } from "../components/GlobalDiscoveryView";
-import { KnowledgeGraphView } from "../components/KnowledgeGraphView";
-import { AgentWorkspaceView } from "../components/AgentWorkspaceView";
-import { StudySuiteView } from "../components/StudySuiteView";
 import { WorkspaceSettingsModal } from "../components/WorkspaceSettingsModal";
 import { DocumentItem, User, WorkspaceItem } from "../types";
 import { api } from "../lib/api";
-import {
-  FileText,
-  Layers,
-  Sparkles,
-  ShieldCheck,
-  Activity,
-  CheckCircle2,
-  RefreshCw,
-  MessageSquare,
-  Table,
-  Globe,
-  Network,
-  Bot,
-  GraduationCap,
-} from "lucide-react";
+import { RefreshCw } from "lucide-react";
+
+// Dynamic client-only import for Three.js WebGL Knowledge Explorer (prevents SSR window errors)
+const UniversalKnowledgeExplorer = dynamic(
+  () => import("../components/UniversalKnowledgeExplorer").then((mod) => mod.UniversalKnowledgeExplorer),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex-1 flex items-center justify-center bg-canvas text-ink-500 text-xs">
+        Initializing 3D WebGL Canvas...
+      </div>
+    ),
+  }
+);
 
 export default function Home() {
   const [user, setUser] = useState<User | null>(null);
-  const [activeTab, setActiveTab] = useState<"catalog" | "chat" | "matrix" | "discovery" | "graph" | "agent" | "study">("catalog");
+  const [activeTab, setActiveTab] = useState<NavTab>("dashboard");
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isUploadOpen, setIsUploadOpen] = useState(false);
@@ -79,24 +76,20 @@ export default function Home() {
 
   // Fetch document catalog
   const fetchDocuments = useCallback(async () => {
+    setIsLoading(true);
     try {
-      if (!api.getToken()) {
-        setDocuments([]);
-        setIsLoading(false);
-        return;
-      }
-      const data = await api.listDocuments();
-      setDocuments(data);
+      const docs = await api.listDocuments(activeWorkspaceId || undefined);
+      setDocuments(docs);
     } catch (err) {
       console.error("Error fetching documents:", err);
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [activeWorkspaceId]);
 
   useEffect(() => {
     fetchDocuments();
-  }, [fetchDocuments, user]);
+  }, [fetchDocuments]);
 
   // Real-time polling for in-flight processing jobs
   useEffect(() => {
@@ -113,34 +106,16 @@ export default function Home() {
     return () => clearInterval(interval);
   }, [documents, fetchDocuments]);
 
-  const handleLogout = () => {
-    api.logout();
-    setUser(null);
-    setDocuments([]);
-  };
-
-  // Compute metrics
-  const totalDocs = documents.length;
-  const completedDocs = documents.filter((d) => d.status === "COMPLETED").length;
-  const totalPages = documents.reduce(
-    (acc, d) => acc + (d.metadata?.total_pages || 0),
-    0
-  );
-  const processingCount = documents.filter((d) =>
-    ["UPLOADED", "QUEUED", "PROCESSING"].includes(d.status)
-  ).length;
-
   const activeWorkspace = workspaces.find((w) => w.id === activeWorkspaceId) || null;
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#080C14]">
-      {/* Header */}
+    <div className="min-h-screen bg-canvas text-ink-900 flex flex-col font-sans selection:bg-veritas-100 selection:text-veritas-700">
       <Header
         user={user}
         activeTab={activeTab}
-        onTabChange={(tab) => {
+        onTabChange={(t) => {
           setSelectedDocId(null);
-          setActiveTab(tab);
+          setActiveTab(t);
         }}
         onOpenAuth={() => setIsAuthOpen(true)}
         onOpenUpload={() => {
@@ -150,174 +125,90 @@ export default function Home() {
             setIsUploadOpen(true);
           }
         }}
-        onLogout={handleLogout}
+        onLogout={() => {
+          api.logout();
+          setUser(null);
+          setWorkspaces([]);
+          setActiveWorkspaceId(null);
+        }}
         activeWorkspace={activeWorkspace}
         workspaces={workspaces}
-        onSelectWorkspace={(wsId) => setActiveWorkspaceId(wsId)}
+        onSelectWorkspace={(id) => setActiveWorkspaceId(id)}
         onOpenWorkspaceSettings={() => setIsWorkspaceSettingsOpen(true)}
       />
 
-      {/* Main Content Area */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-        {activeTab === "chat" ? (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight flex items-center space-x-2.5">
-                  <MessageSquare className="w-6 h-6 text-cyan-400" />
-                  <span>VERITAS Grounded AI Assistant</span>
-                </h1>
-                <p className="text-xs text-slate-400 mt-1">
-                  Greedy deterministic decoding (temp=0.0) • Strict provenance citations • Mandatory abstention
-                </p>
-              </div>
-            </div>
-
-            <ChatInterface
+      <main className="flex-1 flex flex-col">
+        {activeTab === "dashboard" ? (
+          <DashboardView
+            user={user}
+            documents={documents}
+            onNavigateTab={(t) => setActiveTab(t)}
+            onOpenUpload={() => setIsUploadOpen(true)}
+          />
+        ) : activeTab === "chat" ? (
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full flex-1 flex flex-col">
+            <ResearchStudioView
               documents={documents}
               onOpenUpload={() => setIsUploadOpen(true)}
             />
           </div>
-        ) : activeTab === "matrix" ? (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight flex items-center space-x-2.5">
-                  <Table className="w-6 h-6 text-cyan-400" />
-                  <span>Cross-Paper Literature Matrix</span>
-                </h1>
-                <p className="text-xs text-slate-400 mt-1">
-                  5-point scientific synthesis • Side-by-side comparison • Automated empirical contradiction detection
-                </p>
-              </div>
-            </div>
-
-            <LiteratureMatrixView documents={documents} />
-          </div>
-        ) : activeTab === "discovery" ? (
-          <GlobalDiscoveryView
-            documents={documents}
-            onDocumentImported={fetchDocuments}
-            onOpenDocument={(id) => setSelectedDocId(id)}
-          />
         ) : activeTab === "graph" ? (
-          <KnowledgeGraphView
-            documents={documents}
-            onOpenDocument={(id) => setSelectedDocId(id)}
-          />
-        ) : activeTab === "agent" ? (
-          <AgentWorkspaceView documents={documents} />
+          <UniversalKnowledgeExplorer />
         ) : activeTab === "study" ? (
-          <StudySuiteView documents={documents} initialDocumentId={selectedDocId} />
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full flex-1 flex flex-col">
+            <AdaptiveStudySuite documents={documents} initialDocumentId={selectedDocId} />
+          </div>
         ) : (
-          <>
-            {/* Hero & Workspace Banner */}
-            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-[#0E1424] via-[#141C2E] to-[#0A0E1A] border border-[#1E293B] p-6 sm:p-8">
-              <div className="absolute right-0 top-0 w-96 h-96 bg-cyan-500/5 rounded-full blur-3xl pointer-events-none" />
-
-              <div className="relative z-10 max-w-2xl space-y-3">
-                <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-cyan-950/60 border border-cyan-800/60 text-cyan-300 text-xs font-mono">
-                  <ShieldCheck className="w-3.5 h-3.5" />
-                  <span>Phase 10 — Learning & Research Productivity (Flashcards, Quizzes & Anki)</span>
-                </div>
-
-                <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-                  VERITAS Research Intelligence
-                </h1>
-
-                <p className="text-sm text-slate-400 leading-relaxed font-normal">
-                  High-fidelity PDF document ingestion with multi-stage layout decomposition,
-                  dual vector hybrid retrieval (Dense + BM25), and grounded AI synthesis.
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full space-y-6">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-border">
+              <div>
+                <h1 className="text-xl font-semibold text-ink-900">Document Hub</h1>
+                <p className="text-xs text-ink-500 mt-0.5">
+                  Academic papers, preprints, and research dossiers with verified layout decomposition.
                 </p>
               </div>
-
-              {/* Metrics bar */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6 pt-6 border-t border-slate-800/80">
-                <div className="p-3 rounded-xl bg-slate-900/60 border border-slate-800">
-                  <span className="text-[11px] text-slate-400 font-medium">Total Ingested</span>
-                  <p className="text-xl font-bold text-slate-100 font-mono mt-0.5">{totalDocs}</p>
-                </div>
-
-                <div className="p-3 rounded-xl bg-slate-900/60 border border-slate-800">
-                  <span className="text-[11px] text-slate-400 font-medium">Ready for RAG</span>
-                  <p className="text-xl font-bold text-emerald-400 font-mono mt-0.5">{completedDocs}</p>
-                </div>
-
-                <div className="p-3 rounded-xl bg-slate-900/60 border border-slate-800">
-                  <span className="text-[11px] text-slate-400 font-medium">Decomposed Pages</span>
-                  <p className="text-xl font-bold text-cyan-400 font-mono mt-0.5">{totalPages}</p>
-                </div>
-
-                <div className="p-3 rounded-xl bg-slate-900/60 border border-slate-800">
-                  <span className="text-[11px] text-slate-400 font-medium">Active Workers</span>
-                  <p className="text-xl font-bold text-sky-400 font-mono mt-0.5 flex items-center space-x-1.5">
-                    <span>{processingCount}</span>
-                    {processingCount > 0 && <Activity className="w-4 h-4 animate-pulse text-cyan-400" />}
-                  </p>
-                </div>
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={fetchDocuments}
+                  title="Refresh Catalog"
+                  className="p-2 rounded-xl text-ink-500 hover:text-ink-900 hover:bg-surface-subtle border border-border transition-colors"
+                >
+                  <RefreshCw className={`w-4 h-4 ${isLoading ? "animate-spin" : ""}`} />
+                </button>
+                <button
+                  onClick={() => setIsUploadOpen(true)}
+                  className="bg-ink-900 hover:bg-ink-700 text-white text-xs font-medium px-4 py-2 rounded-xl transition-colors shadow-subtle"
+                >
+                  Upload Research PDF
+                </button>
               </div>
             </div>
 
-        {/* Auth prompt if not logged in */}
-        {!user && !isLoading && (
-          <div className="p-4 rounded-xl bg-cyan-950/20 border border-cyan-800/40 flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <ShieldCheck className="w-5 h-5 text-cyan-400 shrink-0" />
-              <p className="text-xs text-cyan-200">
-                Please sign in to your institutional account to upload and explore your private research documents.
-              </p>
-            </div>
-            <button
-              onClick={() => setIsAuthOpen(true)}
-              className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-slate-950 transition-colors"
-            >
-              Sign In Now
-            </button>
+            <DocumentHubView
+              documents={documents}
+              isLoading={isLoading}
+              onSelectDocument={(doc) => setSelectedDocId(doc.id)}
+              onRefresh={fetchDocuments}
+              onOpenUpload={() => setIsUploadOpen(true)}
+              onViewGraph={(doc) => {
+                setSelectedDocId(doc.id);
+                setActiveTab("graph");
+              }}
+            />
           </div>
-        )}
-
-        {/* Document Library Section */}
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-base font-bold text-white tracking-wide">
-                Literature Catalog
-              </h2>
-              <p className="text-xs text-slate-400 mt-0.5">
-                Deterministic provenance • Structured chunks • Section hierarchy
-              </p>
-            </div>
-
-            <button
-              onClick={fetchDocuments}
-              title="Refresh Catalog"
-              className="p-2 rounded-lg text-slate-400 hover:text-cyan-400 hover:bg-slate-900 border border-slate-800/80 transition-colors"
-            >
-              <RefreshCw className={`w-4 h-4 ${isLoading ? "animate-spin" : ""}`} />
-            </button>
-          </div>
-
-          <DocumentList
-            documents={documents}
-            isLoading={isLoading}
-            onSelectDocument={(doc) => setSelectedDocId(doc.id)}
-            onRefresh={fetchDocuments}
-          />
-        </div>
-        </>
         )}
       </main>
 
-      {/* Footer */}
-      <footer className="border-t border-[#1E293B] bg-[#0A0E1A] py-6 mt-auto">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">
+      {/* Minimalist Linear Footer */}
+      <footer className="border-t border-border bg-panel py-5 mt-auto">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-ink-500">
           <div className="flex items-center space-x-2">
-            <span className="font-bold text-slate-300">VERITAS</span>
+            <span className="font-semibold text-ink-900">VERITAS</span>
             <span>•</span>
             <span>Research Intelligence. Grounded in Truth.</span>
           </div>
-          <div className="font-mono text-[11px]">
-            Phase 1 Engine v1.0.0 • PyMuPDF Layout Parser • Strict Multi-Tenant Isolation
+          <div className="font-mono text-[11px] text-ink-400">
+            Universal Light Architecture • Three.js Motion Engine • Multi-Tenant Isolation
           </div>
         </div>
       </footer>

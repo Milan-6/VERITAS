@@ -3,11 +3,12 @@
 import React, { useState, useRef } from "react";
 import { Upload, X, FileText, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
 import { api } from "../lib/api";
+import { useKnowledgeStore } from "../store/useKnowledgeStore";
 
 interface UploadModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onUploadSuccess: () => void;
+  onUploadSuccess: (uploadResponse?: any) => void;
 }
 
 interface PendingFile {
@@ -26,6 +27,8 @@ export const UploadModal: React.FC<UploadModalProps> = ({
   const [isDragging, setIsDragging] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const setGraphData = useKnowledgeStore((state) => state.setGraphData);
 
   if (!isOpen) return null;
 
@@ -96,11 +99,26 @@ export const UploadModal: React.FC<UploadModalProps> = ({
       );
 
       try {
-        await api.uploadDocument(entry.file, (pct) => {
+        const res = await api.uploadDocument(entry.file, (pct) => {
           setFiles((prev) =>
             prev.map((item, idx) => (idx === i ? { ...item, progress: pct } : item))
           );
         });
+
+        // Immediately sync new document data into Zustand Knowledge Store
+        if (res) {
+          const docId = res.document_id || res.document?.id;
+          const fileName = res.filename || res.document?.filename || entry.file.name;
+          if (res.graph?.nodes && res.graph.nodes.length > 0) {
+            setGraphData({
+              documentId: docId,
+              filename: fileName,
+              graph: res.graph,
+              hierarchy: res.hierarchy,
+              evidence: res.evidence,
+            });
+          }
+        }
 
         setFiles((prev) =>
           prev.map((item, idx) =>

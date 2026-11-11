@@ -107,8 +107,41 @@ class DocumentUploadResponse(BaseModel):
     document: DocumentOut
     job: DocumentProcessingJobOut
     message: str = "Document uploaded successfully and queued for extraction"
+    document_id: Optional[str] = None
+    filename: Optional[str] = None
+    graph: Optional[dict[str, Any]] = None
+    hierarchy: Optional[list[dict[str, Any]]] = None
+    evidence: Optional[list[dict[str, Any]]] = None
 
 class BatchUploadResponse(BaseModel):
     successful: list[DocumentUploadResponse]
     failed: list[dict[str, str]]
     total_uploaded: int
+
+
+# --- Hierarchical Graph / Tree Data Contracts ---
+
+class DocumentTreeNodeSchema(BaseModel):
+    id: str
+    label: str
+    level: int  # 0: Root, 1: H1, 2: H2, 3: Flashcard
+    topic_cluster: str
+    panel_payload: str
+
+    class Config:
+        from_attributes = True
+
+
+class DocumentTreeLinkSchema(BaseModel):
+    source: str
+    target: str
+    relationship: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+
+class DocumentTreeDataResponse(BaseModel):
+    nodes: list[DocumentTreeNodeSchema]
+    links: list[DocumentTreeLinkSchema]
+

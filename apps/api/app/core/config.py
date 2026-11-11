@@ -3,10 +3,15 @@ from pathlib import Path
 from pydantic import BaseModel, Field
 from dotenv import load_dotenv
 
-# Load .env file if present
-load_dotenv()
-
 BASE_DIR = Path(__file__).resolve().parent.parent.parent.parent.parent  # d:\Project-1
+
+# Load environment: .env.local overrides .env for native dev without Docker
+_env_local = BASE_DIR / ".env.local"
+_env_default = BASE_DIR / ".env"
+if _env_local.exists():
+    load_dotenv(dotenv_path=_env_local, override=True)
+elif _env_default.exists():
+    load_dotenv(dotenv_path=_env_default, override=True)
 
 class Settings(BaseModel):
     PROJECT_NAME: str = "VERITAS"
@@ -76,8 +81,12 @@ class Settings(BaseModel):
     GEMINI_API_KEY: str = Field(
         default_factory=lambda: os.getenv("GEMINI_API_KEY", os.getenv("GOOGLE_API_KEY", ""))
     )
-    EMBEDDING_MODEL: str = "models/text-embedding-004"
-    EMBEDDING_DIMENSION: int = 768
+    EMBEDDING_MODEL: str = Field(
+        default_factory=lambda: os.getenv("EMBEDDING_MODEL", "models/gemini-embedding-001")
+    )
+    EMBEDDING_DIMENSION: int = Field(
+        default_factory=lambda: int(os.getenv("EMBEDDING_DIMENSION", "768"))
+    )
 
     # LLM Settings (Phase 3)
     LLM_MODEL: str = Field(default_factory=lambda: os.getenv("LLM_MODEL", "gemini-2.0-flash"))
@@ -94,8 +103,10 @@ class Settings(BaseModel):
     # CORS
     BACKEND_CORS_ORIGINS: list[str] = [
         "http://localhost:3000",
+        "http://localhost:5173",
         "http://localhost:8000",
         "http://127.0.0.1:3000",
+        "http://127.0.0.1:5173",
         "http://127.0.0.1:8000",
     ]
 
