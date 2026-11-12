@@ -1,60 +1,52 @@
 # ==============================================================================
-# VERITAS Backend API & Background Worker
-# Multi-Stage Dockerfile (Python 3.12-slim)
+# VERITAS Backend API - Hugging Face Spaces Dockerfile
+# Base: Python 3.10 Slim
+# Exposes Port: 7860
+# Non-Root Execution: User ID 1000 (user)
 # ==============================================================================
 
-# ------------------------------------------------------------------------------
-# Stage 1: Dependency Builder
-# ------------------------------------------------------------------------------
-FROM python:3.12-slim AS builder
+FROM python:3.10-slim
 
-WORKDIR /build
-
-# Install build dependencies for compiling Python packages with C extensions
+# Install system dependencies required for building C extensions, PDF processing, and health checks
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
+    curl \
     libpq-dev \
-    curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Install dependencies into /root/.local
-COPY requirements.txt .
-RUN pip install --no-cache-dir --user -r requirements.txt
+# Create non-root user 'user' with UID 1000 for Hugging Face Spaces compatibility
+RUN useradd -m -u 1000 user
 
-# ------------------------------------------------------------------------------
-# Stage 2: Minimal Runtime Image
-# ------------------------------------------------------------------------------
-FROM python:3.12-slim AS runner
-
-WORKDIR /app
-
-# Install runtime libraries (libpq for PostgreSQL, curl for healthchecks)
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    libpq5 \
-    curl \
-    && rm -rf /var/lib/apt/lists/*
-
-# Copy installed Python packages from builder stage
-COPY --from=builder /root/.local /root/.local
-
-# Ensure executables in /root/.local/bin are in PATH
-ENV PATH=/root/.local/bin:$PATH \
+# Set environment variables
+ENV HOME=/home/user \
+    PATH=/home/user/.local/bin:$PATH \
     PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
-    PORT=8000
+    PORT=7860 \
+    DATABASE_URL=sqlite:////home/user/app/veritas.db \
+    QDRANT_LOCAL_PATH=/home/user/app/data/qdrant \
+    VERITAS_STORAGE_DIR=/home/user/app/uploads/documents
+
+# Set working directory
+WORKDIR /home/user/app
+
+# Copy requirements file first for layer caching
+COPY --chown=user:user requirements.txt .
+
+# Switch to non-root user
+USER user
+
+# Install Python dependencies as non-root user
+RUN pip install --no-cache-dir --user -r requirements.txt
 
 # Copy application source code
-COPY . /app
+COPY --chown=user:user . /home/user/app
 
-# Ensure entrypoint script is executable
-RUN chmod +x /app/entrypoint.sh
+# Ensure persistent directories exist and are writable by non-root user
+RUN mkdir -p /home/user/app/uploads/documents /home/user/app/data/qdrant
 
-# Create persistent storage directories for uploads and vectors
-RUN mkdir -p /app/uploads/documents /app/data/qdrant
+# Expose Hugging Face default port 7860
+EXPOSE 7860
 
-# Expose API port
-EXPOSE 8000
-
-# Set entrypoint & default command
-ENTRYPOINT ["/app/entrypoint.sh"]
-CMD ["api"]
+# Start FastAPI server on port 7860 using uvicorn
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "7860"]
