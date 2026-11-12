@@ -1,5 +1,5 @@
 # ==============================================================================
-# VERITAS Backend API - Hugging Face Spaces Dockerfile
+# VERITAS Backend API - Hugging Face Spaces / Render Dockerfile
 # Base: Python 3.10 Slim
 # Exposes Port: 7860
 # Non-Root Execution: User ID 1000 (user)
@@ -14,7 +14,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Create non-root user 'user' with UID 1000 for Hugging Face Spaces compatibility
+# Create non-root user 'user' with UID 1000 and setup home directory
 RUN useradd -m -u 1000 user
 
 # Set environment variables
@@ -30,22 +30,23 @@ ENV HOME=/home/user \
 # Set working directory
 WORKDIR /home/user/app
 
+# Create necessary runtime directories and grant ownership to 'user' while still root
+RUN mkdir -p /home/user/app/uploads/documents /home/user/app/data/qdrant && \
+    chown -R user:user /home/user/app
+
 # Copy requirements file first for layer caching
 COPY --chown=user:user requirements.txt .
 
-# Switch to non-root user
+# Switch to non-root user AFTER creating directories and setting permissions
 USER user
 
 # Install Python dependencies as non-root user
 RUN pip install --no-cache-dir --user -r requirements.txt
 
-# Copy application source code
+# Copy application source code with correct ownership
 COPY --chown=user:user . /home/user/app
 
-# Ensure persistent directories exist and are writable by non-root user
-RUN mkdir -p /home/user/app/uploads/documents /home/user/app/data/qdrant
-
-# Expose Hugging Face default port 7860
+# Expose default port 7860
 EXPOSE 7860
 
 # Start FastAPI server on port 7860 using uvicorn
