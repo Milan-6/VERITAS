@@ -17,8 +17,19 @@ export interface UseDocumentDataReturn {
   refetch: () => Promise<void>;
 }
 
-const DEFAULT_ENDPOINT =
-  (import.meta as any).env?.VITE_API_URL || "http://localhost:8000/api/v1/document/tree";
+const getBaseUrl = (): string => {
+  const env = (import.meta as any).env;
+  if (env?.VITE_API_BASE_URL) {
+    const base = env.VITE_API_BASE_URL.replace(/\/+$/, "");
+    return `${base}/api/v1/document/tree`;
+  }
+  if (env?.VITE_API_URL) {
+    return env.VITE_API_URL;
+  }
+  return "http://localhost:8000/api/v1/document/tree";
+};
+
+const DEFAULT_ENDPOINT = getBaseUrl();
 
 export function useDocumentData(options: UseDocumentDataOptions = {}): UseDocumentDataReturn {
   const {

@@ -1,0 +1,159 @@
+{
+  "nodes": [
+    {
+      "id": "node_root",
+      "label": "VERITAS: Cryptographic Traceability & Grounded Entailment in Scientific AI",
+      "level": 0,
+      "topic_cluster": "cluster_foundation",
+      "panel_payload": "Comprehensive research paper introducing VERITAS, an architecture engineered to solve LLM hallucination and unverified attribution in scientific literature review through deterministic cryptographic provenance and post-generation NLI claim entailment evaluation."
+    },
+    {
+      "id": "node_h1_ingestion",
+      "label": "1. Multi-Column PDF Decomposition & Coordinate Mapping",
+      "level": 1,
+      "topic_cluster": "cluster_ingestion",
+      "panel_payload": "Details the layout-aware document processing pipeline. Preserves multi-column reading order and maps every extracted text segment to normalized bounding box coordinates across physical document pages."
+    },
+    {
+      "id": "node_h2_pymupdf",
+      "label": "1.1 Bounding Box Normalization & Layout Analysis",
+      "level": 2,
+      "topic_cluster": "cluster_ingestion",
+      "panel_payload": "Employs PyMuPDF page geometry analysis to extract reading blocks with normalized coordinates [x0, y0, x1, y1], distinguishing headers, block math equations, tables, and figure captions from body prose."
+    },
+    {
+      "id": "node_fc_sha256",
+      "label": "Flashcard: Cryptographic SHA-256 Deduplication",
+      "level": 3,
+      "topic_cluster": "cluster_ingestion",
+      "panel_payload": "Q: How does VERITAS prevent duplicate storage and processing of preprints?\nA: Incoming documents generate a deterministic SHA-256 binary hash upon upload. Existing hashes trigger immediate pointer reuse, bypassing redundant embedding operations."
+    },
+    {
+      "id": "node_h1_retrieval",
+      "label": "2. Hybrid Semantic Retrieval & Reciprocal Rank Fusion",
+      "level": 1,
+      "topic_cluster": "cluster_retrieval",
+      "panel_payload": "Combines dense vector embeddings (Google Gemini text-embedding-004) with sparse BM25 lexical search using Qdrant vector database, resolving vocabulary mismatch while guaranteeing precision on academic terminology."
+    },
+    {
+      "id": "node_h2_rrf",
+      "label": "2.1 Reciprocal Rank Fusion (RRF) Ranking",
+      "level": 2,
+      "topic_cluster": "cluster_retrieval",
+      "panel_payload": "Calculates unified chunk relevance using the RRF algorithm: Score(d) = sum(1 / (k + rank_i(d))) with smoothing constant k=60. Normalizes disparately scaled score distributions from dense cosine similarity and sparse BM25."
+    },
+    {
+      "id": "node_fc_rrf_formula",
+      "label": "Flashcard: RRF Mathematical Formulation",
+      "level": 3,
+      "topic_cluster": "cluster_retrieval",
+      "panel_payload": "Q: Why is RRF preferred over weighted linear combination of scores in hybrid search?\nA: Linear combination is sensitive to uncalibrated probability thresholds. RRF operates purely on ordinal rank positions, making it invariant to arbitrary scoring scales."
+    },
+    {
+      "id": "node_h1_verification",
+      "label": "3. Evidence Verification Engine (Post-Generation NLI)",
+      "level": 1,
+      "topic_cluster": "cluster_verification",
+      "panel_payload": "The core differentiator of VERITAS: a secondary post-generation pipeline that evaluates LLM response assertions against retrieved chunk bounding boxes, producing deterministic entailment confidence metrics."
+    },
+    {
+      "id": "node_h2_entailment",
+      "label": "3.1 Directional Natural Language Inference (NLI)",
+      "level": 2,
+      "topic_cluster": "cluster_verification",
+      "panel_payload": "Deconstructs responses into atomic propositions. Each proposition is independently assessed against premise chunks to classify entailment state: FULLY_ENTAILED, PARTIALLY_ENTAILED, or UNGROUNDED_HALLUCINATION."
+    },
+    {
+      "id": "node_fc_abstention",
+      "label": "Flashcard: Strict Abstention Protocol",
+      "level": 3,
+      "topic_cluster": "cluster_verification",
+      "panel_payload": "Q: What is the deterministic response when zero retrieved chunks support a user's research query?\nA: The assistant issues an unambiguous abstention: 'This is not mentioned in the provided research corpus.', preventing speculative hallucination."
+    },
+    {
+      "id": "node_h1_knowledge_graph",
+      "label": "4. Relational Knowledge Graph & Cross-Paper Topology",
+      "level": 1,
+      "topic_cluster": "cluster_graph",
+      "panel_payload": "Extracts typed scientific entities (Methodologies, Benchmark Datasets, Mathematical Models, Authors) and builds multi-tenant relational citation and contradiction topologies."
+    },
+    {
+      "id": "node_h2_graph_traversal",
+      "label": "4.1 Multi-Hop Adjacency Traversal",
+      "level": 2,
+      "topic_cluster": "cluster_graph",
+      "panel_payload": "Enables multi-hop discovery across paper boundaries. Researchers can discover shared benchmark datasets, diverging empirical results, and author lineage through relational edge queries."
+    },
+    {
+      "id": "node_fc_contradiction",
+      "label": "Flashcard: Cross-Paper Contradiction Detection",
+      "level": 3,
+      "topic_cluster": "cluster_graph",
+      "panel_payload": "Q: How does the literature matrix identify conflicting scientific findings across uploaded papers?\nA: It extracts normalized metric deltas and evaluates polar assertion directionality over common experimental setups."
+    },
+    {
+      "id": "node_h1_agent",
+      "label": "5. Autonomous AI Research Agent & ReAct State Machine",
+      "level": 1,
+      "topic_cluster": "cluster_agent",
+      "panel_payload": "Bounded multi-step research agent that executes iterative workspace searches, deep chunk reads, multi-paper synthesis, and automatic entailment verification without human intervention."
+    },
+    {
+      "id": "node_h2_bounded_loop",
+      "label": "5.1 Deterministic Loop Cutoff (Max 5 Steps)",
+      "level": 2,
+      "topic_cluster": "cluster_agent",
+      "panel_payload": "Implements an explicit state machine preventing unbounded execution loops. The agent operates under a strict budget of at most 5 Thought-Action-Observation iterations before forced report synthesis."
+    },
+    {
+      "id": "node_fc_react_cycle",
+      "label": "Flashcard: Agent ReAct Decision Cycle",
+      "level": 3,
+      "topic_cluster": "cluster_agent",
+      "panel_payload": "Q: What tools are available to the autonomous research agent?\nA: search_workspace, read_document_section, extract_document_summary, and finish_research. All tool invocations are logged via Server-Sent Events (SSE)."
+    },
+    {
+      "id": "node_h2_audit_trail",
+      "label": "5.2 Immutable Compliance & Access Auditing",
+      "level": 2,
+      "topic_cluster": "cluster_verification",
+      "panel_payload": "Append-only database logging capturing document views, downloads, semantic retrievals, and prompt injection security incidents in compliance with SOC 2 CC7.2 standards."
+    },
+    {
+      "id": "node_fc_gdpr_purge",
+      "label": "Flashcard: GDPR Article 17 Erasure Cascade",
+      "level": 3,
+      "topic_cluster": "cluster_verification",
+      "panel_payload": "Q: What occurs during a user account erasure execution?\nA: All owned workspaces, physical PDF files on disk, Qdrant vector collections, and chat histories are permanently purged while gracefully unlinking shared collaborative memberships."
+    }
+  ],
+  "links": [
+    { "source": "node_root", "target": "node_h1_ingestion" },
+    { "source": "node_root", "target": "node_h1_retrieval" },
+    { "source": "node_root", "target": "node_h1_verification" },
+    { "source": "node_root", "target": "node_h1_knowledge_graph" },
+    { "source": "node_root", "target": "node_h1_agent" },
+
+    { "source": "node_h1_ingestion", "target": "node_h2_pymupdf" },
+    { "source": "node_h2_pymupdf", "target": "node_fc_sha256" },
+
+    { "source": "node_h1_retrieval", "target": "node_h2_rrf" },
+    { "source": "node_h2_rrf", "target": "node_fc_rrf_formula" },
+
+    { "source": "node_h1_verification", "target": "node_h2_entailment" },
+    { "source": "node_h2_entailment", "target": "node_fc_abstention" },
+
+    { "source": "node_h1_knowledge_graph", "target": "node_h2_graph_traversal" },
+    { "source": "node_h2_graph_traversal", "target": "node_fc_contradiction" },
+
+    { "source": "node_h1_agent", "target": "node_h2_bounded_loop" },
+    { "source": "node_h2_bounded_loop", "target": "node_fc_react_cycle" },
+    { "source": "node_h1_agent", "target": "node_h2_audit_trail" },
+    { "source": "node_h2_audit_trail", "target": "node_fc_gdpr_purge" },
+
+    { "source": "node_h2_pymupdf", "target": "node_h1_retrieval" },
+    { "source": "node_h2_rrf", "target": "node_h1_verification" },
+    { "source": "node_h2_entailment", "target": "node_h1_agent" },
+    { "source": "node_h2_graph_traversal", "target": "node_h1_verification" }
+  ]
+}

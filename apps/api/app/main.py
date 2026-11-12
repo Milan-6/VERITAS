@@ -34,10 +34,11 @@ app = FastAPI(
 # Telemetry & Rate Limiting Middleware (Phase 13)
 app.add_middleware(RateLimitAndTelemetryMiddleware)
 
-# CORS configuration
+# CORS configuration (allowing local dev, Render backend, and Cloudflare Pages deployments)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.BACKEND_CORS_ORIGINS,
+    allow_origin_regex=r"^https://.*\.pages\.dev$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

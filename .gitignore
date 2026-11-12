@@ -31,8 +31,8 @@ pnpm-debug.log*
 *.key
 
 # Data, Volumes & Uploads
-data/
-uploads/
+/data/
+/uploads/
 postgres_data/
 redis_data/
 qdrant_data/
