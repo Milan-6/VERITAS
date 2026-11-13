@@ -26,6 +26,8 @@ class FlashcardDeckOut(BaseModel):
     created_at: datetime
     updated_at: datetime
     cards: List[FlashcardOut] = Field(default_factory=list)
+    flashcards: List[FlashcardOut] = Field(default_factory=list)
+    status: Optional[str] = "generated"
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -51,6 +53,7 @@ class QuizOut(BaseModel):
     created_at: datetime
     updated_at: datetime
     questions: List[QuizQuestion] = Field(default_factory=list)
+    status: Optional[str] = "generated"
 
     model_config = ConfigDict(from_attributes=True)
 

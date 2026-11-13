@@ -346,6 +346,8 @@ export interface FlashcardDeck {
   created_at: string;
   updated_at: string;
   cards: Flashcard[];
+  flashcards?: Flashcard[];
+  status?: string;
 }
 
 export interface QuizQuestion {
@@ -367,6 +369,7 @@ export interface Quiz {
   created_at: string;
   updated_at: string;
   questions: QuizQuestion[];
+  status?: string;
 }
 
 export interface QuizQuestionResult {

@@ -84,7 +84,22 @@ export const AdaptiveStudySuite: React.FC<AdaptiveStudySuiteProps> = ({
       setIsFlipped(false);
     } catch (err: any) {
       console.error("Failed to load flashcard deck:", err);
-      setErrorMsg("Failed to generate flashcards. Make sure the document is fully indexed.");
+      if (forceGenerate) {
+        setErrorMsg("Failed to generate flashcards. Make sure the document is fully indexed.");
+      } else {
+        // If not forced and failed, set empty deck state so user can click Generate
+        setDeck({
+          id: `empty_${docId}`,
+          tenant_id: "",
+          document_id: docId,
+          title: "Flashcard Deck Not Generated",
+          card_count: 0,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          cards: [],
+          status: "not_generated",
+        });
+      }
     } finally {
       setIsLoadingDeck(false);
     }
@@ -107,7 +122,22 @@ export const AdaptiveStudySuite: React.FC<AdaptiveStudySuiteProps> = ({
       setEvaluation(null);
     } catch (err: any) {
       console.error("Failed to load quiz:", err);
-      setErrorMsg("Failed to generate quiz questions.");
+      if (forceGenerate) {
+        setErrorMsg("Failed to generate quiz questions.");
+      } else {
+        // If not forced and failed, set empty quiz state so user can click Generate
+        setQuiz({
+          id: `empty_${docId}`,
+          tenant_id: "",
+          document_id: docId,
+          title: "Diagnostic Quiz Not Generated",
+          total_questions: 0,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          questions: [],
+          status: "not_generated",
+        });
+      }
     } finally {
       setIsLoadingQuiz(false);
     }

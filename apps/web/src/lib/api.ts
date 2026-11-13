@@ -411,17 +411,69 @@ class ApiClient {
 
   // Phase 10: Learning & Research Productivity
   async getFlashcards(documentId: string): Promise<FlashcardDeck> {
-    return this.request<FlashcardDeck>(`/learning/flashcards/${documentId}`);
+    try {
+      const deck = await this.request<FlashcardDeck>(`/learning/flashcards/${documentId}`);
+      if (deck.status === "not_generated") {
+        return { ...deck, cards: [] };
+      }
+      if (!deck.cards && (deck as any).flashcards) {
+        deck.cards = (deck as any).flashcards;
+      }
+      return deck;
+    } catch (err: any) {
+      // Gracefully catch 404/not-found to display the ungenerated study state
+      if (err?.message?.includes("404") || err?.message?.includes("Not Found")) {
+        return {
+          id: `empty_${documentId}`,
+          tenant_id: "",
+          document_id: documentId,
+          title: "Flashcard Deck Not Generated",
+          card_count: 0,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          cards: [],
+          flashcards: [],
+          status: "not_generated",
+        };
+      }
+      throw err;
+    }
   }
 
   async generateFlashcards(documentId: string): Promise<FlashcardDeck> {
-    return this.request<FlashcardDeck>(`/learning/flashcards/generate/${documentId}`, {
+    const deck = await this.request<FlashcardDeck>(`/learning/flashcards/generate/${documentId}`, {
       method: "POST",
     });
+    if (!deck.cards && (deck as any).flashcards) {
+      deck.cards = (deck as any).flashcards;
+    }
+    return deck;
   }
 
   async getQuiz(documentId: string): Promise<Quiz> {
-    return this.request<Quiz>(`/learning/quiz/${documentId}`);
+    try {
+      const q = await this.request<Quiz>(`/learning/quiz/${documentId}`);
+      if (q.status === "not_generated") {
+        return { ...q, questions: [] };
+      }
+      return q;
+    } catch (err: any) {
+      // Gracefully catch 404/not-found to display the ungenerated quiz state
+      if (err?.message?.includes("404") || err?.message?.includes("Not Found")) {
+        return {
+          id: `empty_${documentId}`,
+          tenant_id: "",
+          document_id: documentId,
+          title: "Diagnostic Quiz Not Generated",
+          total_questions: 0,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          questions: [],
+          status: "not_generated",
+        };
+      }
+      throw err;
+    }
   }
 
   async generateQuiz(documentId: string): Promise<Quiz> {

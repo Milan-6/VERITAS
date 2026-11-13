@@ -77,7 +77,21 @@ export const StudySuiteView: React.FC<StudySuiteViewProps> = ({
       setIsFlipped(false);
     } catch (err: any) {
       console.error("Error loading flashcards:", err);
-      setErrorMsg(err.message || "Failed to load flashcard deck.");
+      if (forceGenerate) {
+        setErrorMsg(err.message || "Failed to load flashcard deck.");
+      } else {
+        setDeck({
+          id: `empty_${docId}`,
+          tenant_id: "",
+          document_id: docId,
+          title: "Flashcard Deck Not Generated",
+          card_count: 0,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          cards: [],
+          status: "not_generated",
+        });
+      }
     } finally {
       setIsLoadingDeck(false);
     }
@@ -97,7 +111,21 @@ export const StudySuiteView: React.FC<StudySuiteViewProps> = ({
       setQuiz(data);
     } catch (err: any) {
       console.error("Error loading quiz:", err);
-      setErrorMsg(err.message || "Failed to load diagnostic quiz.");
+      if (forceGenerate) {
+        setErrorMsg(err.message || "Failed to load diagnostic quiz.");
+      } else {
+        setQuiz({
+          id: `empty_${docId}`,
+          tenant_id: "",
+          document_id: docId,
+          title: "Diagnostic Quiz Not Generated",
+          total_questions: 0,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          questions: [],
+          status: "not_generated",
+        });
+      }
     } finally {
       setIsLoadingQuiz(false);
     }

@@ -28,8 +28,10 @@ class LearningService:
     def _verify_document_ownership(document_id: str, tenant_id: str, db: Session) -> Document:
         """
         CRITICAL SECURITY CHECK (SEC-01):
-        Ensures the document exists and belongs to the caller's tenant/workspace.
+        Ensures the document exists and belongs to the caller's tenant/workspace or workspace association.
         """
+        from app.models.workspace import Workspace, WorkspaceMember, DocumentWorkspaceAssociation
+
         doc = (
             db.query(Document)
             .filter(
@@ -38,22 +40,69 @@ class LearningService:
             )
             .first()
         )
-        if not doc:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Document '{document_id}' not found or access denied in this workspace.",
-            )
-        return doc
+        if doc:
+            return doc
+
+        # Check through DocumentWorkspaceAssociation
+        assoc = db.query(DocumentWorkspaceAssociation).filter(
+            DocumentWorkspaceAssociation.document_id == document_id,
+            DocumentWorkspaceAssociation.workspace_id == tenant_id,
+        ).first()
+        if assoc:
+            doc = db.query(Document).filter(Document.id == document_id).first()
+            if doc:
+                return doc
+
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Document '{document_id}' not found or access denied in this workspace.",
+        )
 
     def _get_document_chunks(self, document_id: str, db: Session) -> List[SemanticChunk]:
-        """Fetches all indexed semantic chunks ordered by page and index."""
+        """Fetches all indexed semantic chunks from database or Qdrant vector store."""
         chunks = (
             db.query(SemanticChunk)
             .filter(SemanticChunk.document_id == document_id)
             .order_by(SemanticChunk.chunk_index.asc())
             .all()
         )
-        return chunks
+        if chunks:
+            return chunks
+
+        # Fallback to Qdrant vector store chunks if DB semantic_chunks table is empty
+        try:
+            from app.services.vector_store import vector_store
+            from qdrant_client import models
+            records, _ = vector_store.client.scroll(
+                collection_name=vector_store.collection_name,
+                scroll_filter=models.Filter(
+                    must=[models.FieldCondition(key="document_id", match=models.MatchValue(value=document_id))]
+                ),
+                limit=30,
+            )
+            qdrant_chunks = []
+            for idx, rec in enumerate(records):
+                p = rec.payload or {}
+                chunk = SemanticChunk(
+                    id=str(rec.id),
+                    chunk_id=p.get("chunk_id", f"chk_{document_id}_{idx}"),
+                    document_id=document_id,
+                    user_id=p.get("tenant_id", "default"),
+                    chunk_index=idx,
+                    content_text=p.get("content_text", ""),
+                    embedded_text=p.get("embedded_text", ""),
+                    page_number=p.get("page_number", 1),
+                    section_title=p.get("section_title", "General"),
+                    token_count=p.get("token_count", 0),
+                )
+                qdrant_chunks.append(chunk)
+            if qdrant_chunks:
+                logger.info(f"Retrieved {len(qdrant_chunks)} chunks from Qdrant vector store for doc {document_id}")
+                return qdrant_chunks
+        except Exception as e:
+            logger.warning(f"Failed to fetch chunks from Qdrant for doc {document_id}: {e}")
+
+        return []
 
     def generate_flashcards(
         self,
@@ -129,26 +178,14 @@ class LearningService:
         chunks: List[SemanticChunk],
     ) -> List[Dict[str, Any]]:
         """Invokes Gemini Flash with structured JSON output for 10-15 conceptual flashcards."""
-        try:
-            import google.generativeai as genai
-
-            genai.configure(api_key=settings.GEMINI_API_KEY)
-            model = genai.GenerativeModel(
-                model_name=settings.LLM_MODEL,
-                generation_config={
-                    "temperature": 0.0,
-                    "response_mime_type": "application/json",
-                },
+        context_excerpts = []
+        for c in chunks[:12]:
+            context_excerpts.append(
+                f"[Page {c.page_number} | Section: {c.section_title}]\n{c.content_text.strip()}"
             )
+        context_text = "\n\n---\n\n".join(context_excerpts)
 
-            context_excerpts = []
-            for c in chunks[:12]:
-                context_excerpts.append(
-                    f"[Page {c.page_number} | Section: {c.section_title}]\n{c.content_text.strip()}"
-                )
-            context_text = "\n\n---\n\n".join(context_excerpts)
-
-            prompt = f"""You are the VERITAS Scientific Study Assistant.
+        prompt = f"""You are the VERITAS Scientific Study Assistant.
 Generate 10 to 15 high-yield conceptual flashcards based strictly on the provided research paper context.
 
 Document Title: "{doc_title}"
@@ -169,6 +206,46 @@ JSON Output Schema:
   ]
 }}
 """
+        # Try direct REST API via httpx (preferred across all environments)
+        if settings.GEMINI_API_KEY and settings.GEMINI_API_KEY.strip():
+            try:
+                import httpx
+                url = f"https://generativelanguage.googleapis.com/v1beta/models/{settings.LLM_MODEL}:generateContent?key={settings.GEMINI_API_KEY}"
+                payload = {
+                    "contents": [{"role": "user", "parts": [{"text": prompt}]}],
+                    "generationConfig": {
+                        "temperature": 0.0,
+                        "response_mime_type": "application/json",
+                    },
+                }
+                with httpx.Client(timeout=30.0) as client:
+                    resp = client.post(url, json=payload, headers={"Content-Type": "application/json"})
+                    if resp.status_code == 200:
+                        data = resp.json()
+                        candidates = data.get("candidates", [])
+                        if candidates:
+                            text = candidates[0].get("content", {}).get("parts", [{}])[0].get("text", "")
+                            parsed = json.loads(text)
+                            cards = parsed.get("flashcards", [])
+                            for c in cards:
+                                c["source_citation"] = f"[Document: {doc_title}, Page: {c.get('page_number', 1)}]"
+                            if cards:
+                                return cards
+            except Exception as e:
+                logger.warning(f"Gemini REST flashcard generation failed: {e}")
+
+        # Fallback to google.generativeai if installed
+        try:
+            import google.generativeai as genai
+
+            genai.configure(api_key=settings.GEMINI_API_KEY)
+            model = genai.GenerativeModel(
+                model_name=settings.LLM_MODEL,
+                generation_config={
+                    "temperature": 0.0,
+                    "response_mime_type": "application/json",
+                },
+            )
             response = model.generate_content(prompt)
             data = json.loads(response.text)
             cards = data.get("flashcards", [])
@@ -176,7 +253,7 @@ JSON Output Schema:
                 c["source_citation"] = f"[Document: {doc_title}, Page: {c.get('page_number', 1)}]"
             return cards
         except Exception as e:
-            logger.warning(f"Gemini flashcard generation failed: {e}. Using deterministic fallback.")
+            logger.warning(f"Gemini library flashcard generation failed: {e}. Using deterministic fallback.")
             return []
 
     def _generate_flashcards_deterministic(
@@ -376,26 +453,14 @@ JSON Output Schema:
         chunks: List[SemanticChunk],
     ) -> List[Dict[str, Any]]:
         """Invokes Gemini Flash with structured JSON output for 5 MCQs."""
-        try:
-            import google.generativeai as genai
-
-            genai.configure(api_key=settings.GEMINI_API_KEY)
-            model = genai.GenerativeModel(
-                model_name=settings.LLM_MODEL,
-                generation_config={
-                    "temperature": 0.0,
-                    "response_mime_type": "application/json",
-                },
+        context_excerpts = []
+        for c in chunks[:10]:
+            context_excerpts.append(
+                f"[Page {c.page_number} | Section: {c.section_title}]\n{c.content_text.strip()}"
             )
+        context_text = "\n\n---\n\n".join(context_excerpts)
 
-            context_excerpts = []
-            for c in chunks[:10]:
-                context_excerpts.append(
-                    f"[Page {c.page_number} | Section: {c.section_title}]\n{c.content_text.strip()}"
-                )
-            context_text = "\n\n---\n\n".join(context_excerpts)
-
-            prompt = f"""You are the VERITAS Diagnostic Quiz Generator.
+        prompt = f"""You are the VERITAS Diagnostic Quiz Generator.
 Generate exactly 5 challenging multiple-choice questions (MCQs) evaluating deep comprehension of this research paper.
 
 Document Title: "{doc_title}"
@@ -417,6 +482,48 @@ JSON Output Schema:
   ]
 }}
 """
+        # Try direct REST API via httpx (preferred across all environments)
+        if settings.GEMINI_API_KEY and settings.GEMINI_API_KEY.strip():
+            try:
+                import httpx
+                url = f"https://generativelanguage.googleapis.com/v1beta/models/{settings.LLM_MODEL}:generateContent?key={settings.GEMINI_API_KEY}"
+                payload = {
+                    "contents": [{"role": "user", "parts": [{"text": prompt}]}],
+                    "generationConfig": {
+                        "temperature": 0.0,
+                        "response_mime_type": "application/json",
+                    },
+                }
+                with httpx.Client(timeout=30.0) as client:
+                    resp = client.post(url, json=payload, headers={"Content-Type": "application/json"})
+                    if resp.status_code == 200:
+                        data = resp.json()
+                        candidates = data.get("candidates", [])
+                        if candidates:
+                            text = candidates[0].get("content", {}).get("parts", [{}])[0].get("text", "")
+                            parsed = json.loads(text)
+                            q_list = parsed.get("questions", [])
+                            for idx, q in enumerate(q_list, start=1):
+                                if not q.get("question_id"):
+                                    q["question_id"] = f"q_{uuid.uuid4().hex[:6]}"
+                                q["source_citation"] = f"[Document: {doc_title}, Page: {q.get('page_number', 1)}]"
+                            if q_list:
+                                return q_list
+            except Exception as e:
+                logger.warning(f"Gemini REST quiz generation failed: {e}")
+
+        # Fallback to google.generativeai if installed
+        try:
+            import google.generativeai as genai
+
+            genai.configure(api_key=settings.GEMINI_API_KEY)
+            model = genai.GenerativeModel(
+                model_name=settings.LLM_MODEL,
+                generation_config={
+                    "temperature": 0.0,
+                    "response_mime_type": "application/json",
+                },
+            )
             response = model.generate_content(prompt)
             data = json.loads(response.text)
             q_list = data.get("questions", [])

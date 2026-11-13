@@ -1,3 +1,4 @@
+from datetime import datetime
 import logging
 from fastapi import APIRouter, Depends, Response, status
 from sqlalchemy.orm import Session
@@ -33,7 +34,10 @@ def generate_flashcards(
     """Generates 10-15 conceptual flashcards with exact page provenance for a paper."""
     tenant_id = get_tenant_id(current_user, db)
     deck = learning_service.generate_flashcards(document_id, tenant_id, db)
-    return FlashcardDeckOut.model_validate(deck)
+    out = FlashcardDeckOut.model_validate(deck)
+    out.flashcards = out.cards
+    out.status = "generated"
+    return out
 
 
 @router.get("/flashcards/{document_id}", response_model=FlashcardDeckOut)
@@ -42,12 +46,26 @@ def get_flashcards(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Retrieves existing flashcard deck for a document, auto-generating if not present."""
+    """Retrieves existing flashcard deck for a document, returning empty not_generated if not present."""
     tenant_id = get_tenant_id(current_user, db)
     deck = learning_service.get_flashcard_deck(document_id, tenant_id, db)
     if not deck:
-        deck = learning_service.generate_flashcards(document_id, tenant_id, db)
-    return FlashcardDeckOut.model_validate(deck)
+        return FlashcardDeckOut(
+            id=f"empty_{document_id}",
+            tenant_id=tenant_id,
+            document_id=document_id,
+            title="Flashcard Deck Not Generated",
+            card_count=0,
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow(),
+            cards=[],
+            flashcards=[],
+            status="not_generated",
+        )
+    out = FlashcardDeckOut.model_validate(deck)
+    out.flashcards = out.cards
+    out.status = "generated"
+    return out
 
 
 @router.get("/flashcards/{document_id}/export")
@@ -80,7 +98,9 @@ def generate_quiz(
     """Generates a 5-question diagnostic MCQ quiz with answer keys and citations."""
     tenant_id = get_tenant_id(current_user, db)
     quiz = learning_service.generate_quiz(document_id, tenant_id, db)
-    return QuizOut.model_validate(quiz)
+    out = QuizOut.model_validate(quiz)
+    out.status = "generated"
+    return out
 
 
 @router.get("/quiz/{document_id}", response_model=QuizOut)
@@ -89,12 +109,24 @@ def get_quiz(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Retrieves existing diagnostic quiz for a document, auto-generating if not present."""
+    """Retrieves existing diagnostic quiz for a document, returning empty not_generated if not present."""
     tenant_id = get_tenant_id(current_user, db)
     quiz = learning_service.get_quiz(document_id, tenant_id, db)
     if not quiz:
-        quiz = learning_service.generate_quiz(document_id, tenant_id, db)
-    return QuizOut.model_validate(quiz)
+        return QuizOut(
+            id=f"empty_{document_id}",
+            tenant_id=tenant_id,
+            document_id=document_id,
+            title="Diagnostic Quiz Not Generated",
+            total_questions=0,
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow(),
+            questions=[],
+            status="not_generated",
+        )
+    out = QuizOut.model_validate(quiz)
+    out.status = "generated"
+    return out
 
 
 @router.post("/quiz/{quiz_id}/evaluate", response_model=QuizEvaluationResult)
