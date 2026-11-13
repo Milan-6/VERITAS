@@ -30,26 +30,24 @@ import {
 } from "../types";
 
 function getApiBaseUrl(): string {
-  // 1. Explicitly configured env var that is a full URL
-  const envUrl = process.env.NEXT_PUBLIC_API_URL;
+  // 1. Explicitly configured env vars (NEXT_PUBLIC_API_URL or VITE_API_BASE_URL)
+  const envUrl = process.env.NEXT_PUBLIC_API_URL || process.env.VITE_API_BASE_URL;
   if (envUrl && envUrl.startsWith("http")) {
     return envUrl.replace(/\/+$/, "");
   }
 
   // 2. Browser runtime environment detection
   if (typeof window !== "undefined") {
-    const { hostname, origin } = window.location;
+    const { hostname } = window.location;
     // Local development (localhost / 127.0.0.1)
     if (hostname === "localhost" || hostname === "127.0.0.1") {
       return "http://127.0.0.1:8000/api/v1";
     }
-    // Cloudflare Pages or remote static deployments
-    if (hostname.endsWith("pages.dev") || hostname.includes("cloudflare")) {
-      return "https://veritas-backend-3cge.onrender.com/api/v1";
-    }
+    // Remote static deployments (Cloudflare Pages, custom domain, etc.)
+    return "https://veritas-backend-3cge.onrender.com/api/v1";
   }
 
-  // 3. Fallback to envUrl if provided (e.g. custom path), otherwise default Render backend
+  // 3. Static build export / SSR fallback: default directly to Render backend
   if (envUrl && !envUrl.startsWith("/")) {
     return envUrl.replace(/\/+$/, "");
   }
