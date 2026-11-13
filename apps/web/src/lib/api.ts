@@ -33,28 +33,17 @@ const PRODUCTION_RENDER_API = "https://veritas-backend-3cge.onrender.com/api/v1"
 const LOCAL_DEV_API = "http://127.0.0.1:8000/api/v1";
 
 /**
- * Robust API Base URL resolution.
- * Evaluated on each request to ensure runtime window.location checks are always accurate.
+ * Hardcoded absolute API Base URL resolution.
+ * If hostname is not localhost or 127.0.0.1, it unconditionally returns the Render backend URL.
  */
 function getApiBaseUrl(): string {
-  // 1. Browser runtime: evaluate window.location dynamically
   if (typeof window !== "undefined" && window.location) {
     const { hostname } = window.location;
-    // Local development
-    if (hostname === "localhost" || hostname === "127.0.0.1" || hostname === "0.0.0.0") {
+    if (hostname === "localhost" || hostname === "127.0.0.1") {
       return LOCAL_DEV_API;
     }
-    // Remote / Cloudflare Pages / Custom Production Domain
     return PRODUCTION_RENDER_API;
   }
-
-  // 2. Build time / SSR runtime: check explicit environment variables
-  const envUrl = process.env.NEXT_PUBLIC_API_URL || process.env.VITE_API_BASE_URL;
-  if (envUrl && envUrl.startsWith("http")) {
-    return envUrl.replace(/\/+$/, "");
-  }
-
-  // 3. Absolute fail-safe: default to production Render backend
   return PRODUCTION_RENDER_API;
 }
 
