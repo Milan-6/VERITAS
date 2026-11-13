@@ -68,6 +68,7 @@ class ApiClient {
 
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const headers: Record<string, string> = {
+      Accept: "application/json",
       ...(options.headers as Record<string, string>),
     };
 
@@ -108,7 +109,12 @@ class ApiClient {
   async register(email: string, password: string, fullName?: string): Promise<{ access_token: string; user: User }> {
     const data = await this.request<{ access_token: string; user: User }>("/auth/register", {
       method: "POST",
-      body: JSON.stringify({ email, password, full_name: fullName }),
+      body: JSON.stringify({
+        email,
+        password,
+        full_name: fullName,
+        fullName: fullName,
+      }),
     });
     this.setToken(data.access_token);
     return data;
