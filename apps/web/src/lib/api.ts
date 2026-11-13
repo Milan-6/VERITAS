@@ -29,32 +29,34 @@ import {
   SecurityIncidentResponse,
 } from "../types";
 
+const PRODUCTION_RENDER_API = "https://veritas-backend-3cge.onrender.com/api/v1";
+const LOCAL_DEV_API = "http://127.0.0.1:8000/api/v1";
+
+/**
+ * Robust API Base URL resolution.
+ * Evaluated on each request to ensure runtime window.location checks are always accurate.
+ */
 function getApiBaseUrl(): string {
-  // 1. Explicitly configured env vars (NEXT_PUBLIC_API_URL or VITE_API_BASE_URL)
+  // 1. Browser runtime: evaluate window.location dynamically
+  if (typeof window !== "undefined" && window.location) {
+    const { hostname } = window.location;
+    // Local development
+    if (hostname === "localhost" || hostname === "127.0.0.1" || hostname === "0.0.0.0") {
+      return LOCAL_DEV_API;
+    }
+    // Remote / Cloudflare Pages / Custom Production Domain
+    return PRODUCTION_RENDER_API;
+  }
+
+  // 2. Build time / SSR runtime: check explicit environment variables
   const envUrl = process.env.NEXT_PUBLIC_API_URL || process.env.VITE_API_BASE_URL;
   if (envUrl && envUrl.startsWith("http")) {
     return envUrl.replace(/\/+$/, "");
   }
 
-  // 2. Browser runtime environment detection
-  if (typeof window !== "undefined") {
-    const { hostname } = window.location;
-    // Local development (localhost / 127.0.0.1)
-    if (hostname === "localhost" || hostname === "127.0.0.1") {
-      return "http://127.0.0.1:8000/api/v1";
-    }
-    // Remote static deployments (Cloudflare Pages, custom domain, etc.)
-    return "https://veritas-backend-3cge.onrender.com/api/v1";
-  }
-
-  // 3. Static build export / SSR fallback: default directly to Render backend
-  if (envUrl && !envUrl.startsWith("/")) {
-    return envUrl.replace(/\/+$/, "");
-  }
-  return "https://veritas-backend-3cge.onrender.com/api/v1";
+  // 3. Absolute fail-safe: default to production Render backend
+  return PRODUCTION_RENDER_API;
 }
-
-const API_BASE_URL = getApiBaseUrl();
 
 class ApiClient {
   private token: string | null = null;
@@ -97,7 +99,8 @@ class ApiClient {
       headers["Content-Type"] = "application/json";
     }
 
-    const res = await fetch(`${API_BASE_URL}${endpoint}`, {
+    const baseUrl = getApiBaseUrl();
+    const res = await fetch(`${baseUrl}${endpoint}`, {
       ...options,
       headers,
     });
@@ -158,7 +161,7 @@ class ApiClient {
     const token = this.getToken();
     return new Promise((resolve, reject) => {
       const xhr = new XMLHttpRequest();
-      xhr.open("POST", `${API_BASE_URL}/documents/upload`);
+      xhr.open("POST", `${getApiBaseUrl()}/documents/upload`);
       if (token) {
         xhr.setRequestHeader("Authorization", `Bearer ${token}`);
       }
@@ -234,7 +237,7 @@ class ApiClient {
   }
 
   getDownloadUrl(id: string): string {
-    return `${API_BASE_URL}/documents/${id}/download`;
+    return `${getApiBaseUrl()}/documents/${id}/download`;
   }
 
   // Phase 2: Hybrid Retrieval Endpoint
@@ -367,7 +370,7 @@ class ApiClient {
       headers["Authorization"] = `Bearer ${token}`;
     }
 
-    const response = await fetch(`${API_BASE_URL}/agent/task`, {
+    const response = await fetch(`${getApiBaseUrl()}/agent/task`, {
       method: "POST",
       headers,
       body: JSON.stringify({
@@ -496,7 +499,7 @@ class ApiClient {
       headers["Authorization"] = `Bearer ${token}`;
     }
 
-    const response = await fetch(`${API_BASE_URL}/learning/flashcards/${documentId}/export`, {
+    const response = await fetch(`${getApiBaseUrl()}/learning/flashcards/${documentId}/export`, {
       headers,
     });
 
@@ -552,7 +555,7 @@ class ApiClient {
       headers["Authorization"] = `Bearer ${token}`;
     }
 
-    const response = await fetch(`${API_BASE_URL}/export/dossier/${documentId}`, {
+    const response = await fetch(`${getApiBaseUrl()}/export/dossier/${documentId}`, {
       headers,
     });
 
