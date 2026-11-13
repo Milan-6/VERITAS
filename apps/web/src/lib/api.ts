@@ -30,20 +30,12 @@ import {
 } from "../types";
 
 const PRODUCTION_RENDER_API = "https://veritas-backend-3cge.onrender.com/api/v1";
-const LOCAL_DEV_API = "http://127.0.0.1:8000/api/v1";
 
 /**
  * Hardcoded absolute API Base URL resolution.
- * If hostname is not localhost or 127.0.0.1, it unconditionally returns the Render backend URL.
+ * Unconditionally and immediately returns the production Render backend URL.
  */
 function getApiBaseUrl(): string {
-  if (typeof window !== "undefined" && window.location) {
-    const { hostname } = window.location;
-    if (hostname === "localhost" || hostname === "127.0.0.1") {
-      return LOCAL_DEV_API;
-    }
-    return PRODUCTION_RENDER_API;
-  }
   return PRODUCTION_RENDER_API;
 }
 
